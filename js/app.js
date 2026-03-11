@@ -202,20 +202,38 @@ const App = {
         <h2 style="margin-bottom:1.5rem;color:var(--text-primary);">เปลี่ยนรหัสผ่าน</h2>
         <div style="margin-bottom:1rem;">
           <label style="display:block;margin-bottom:0.3rem;color:var(--text-secondary);font-size:0.9rem;">รหัสผ่านเก่า</label>
-          <input type="password" id="old-password" style="width:100%;padding:0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;" />
+          <div style="position:relative;">
+            <input type="password" id="old-password" style="width:100%;padding:0.7rem 2.5rem 0.7rem 0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;box-sizing:border-box;" />
+            <button type="button" class="pw-toggle" data-target="old-password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px;color:var(--text-muted);">👁</button>
+          </div>
         </div>
         <div style="margin-bottom:1rem;">
           <label style="display:block;margin-bottom:0.3rem;color:var(--text-secondary);font-size:0.9rem;">รหัสผ่านใหม่</label>
-          <input type="password" id="new-password" style="width:100%;padding:0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;" />
+          <div style="position:relative;">
+            <input type="password" id="new-password" style="width:100%;padding:0.7rem 2.5rem 0.7rem 0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;box-sizing:border-box;" />
+            <button type="button" class="pw-toggle" data-target="new-password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px;color:var(--text-muted);">👁</button>
+          </div>
         </div>
         <div style="margin-bottom:1.5rem;">
           <label style="display:block;margin-bottom:0.3rem;color:var(--text-secondary);font-size:0.9rem;">ยืนยันรหัสผ่านใหม่</label>
-          <input type="password" id="confirm-password" style="width:100%;padding:0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;" />
+          <div style="position:relative;">
+            <input type="password" id="confirm-password" style="width:100%;padding:0.7rem 2.5rem 0.7rem 0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;box-sizing:border-box;" />
+            <button type="button" class="pw-toggle" data-target="confirm-password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px;color:var(--text-muted);">👁</button>
+          </div>
         </div>
         <button id="btn-change-pw" style="width:100%;padding:0.8rem;border:none;border-radius:8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1rem;font-weight:600;cursor:pointer;">บันทึกรหัสผ่านใหม่</button>
         <div id="pw-message" style="margin-top:1rem;text-align:center;font-size:0.9rem;"></div>
       </div>
     `;
+
+    // Show/hide password toggles
+    area.querySelectorAll('.pw-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+        else { input.type = 'password'; btn.textContent = '👁'; }
+      });
+    });
 
     document.getElementById('btn-change-pw').addEventListener('click', async () => {
       const oldPw = document.getElementById('old-password').value;
@@ -230,7 +248,7 @@ const App = {
       const btn = document.getElementById('btn-change-pw');
       btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
 
-      const token = localStorage.getItem('ncs-token');
+      const token = Auth.getToken();
       const res = await API.post('change-password', { token, old_password: oldPw, new_password: newPw });
 
       btn.disabled = false; btn.textContent = 'บันทึกรหัสผ่านใหม่';

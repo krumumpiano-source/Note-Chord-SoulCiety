@@ -39,7 +39,10 @@
           </div>
           <div class="form-group">
             <label for="login-password">รหัสผ่าน</label>
-            <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+            <div style="position:relative;">
+              <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password" style="padding-right:2.5rem;">
+              <button type="button" class="pw-toggle" data-target="login-password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px;color:var(--text-muted,#888);">👁</button>
+            </div>
           </div>
           <div class="form-error" id="login-error"></div>
           <button type="submit" class="btn btn-primary" id="btn-login">
@@ -60,7 +63,10 @@
           </div>
           <div class="form-group">
             <label for="reg-password">รหัสผ่าน</label>
-            <input type="password" id="reg-password" class="form-input" placeholder="อย่างน้อย 6 ตัวอักษร" required minlength="6" autocomplete="new-password">
+            <div style="position:relative;">
+              <input type="password" id="reg-password" class="form-input" placeholder="อย่างน้อย 6 ตัวอักษร" required minlength="6" autocomplete="new-password" style="padding-right:2.5rem;">
+              <button type="button" class="pw-toggle" data-target="reg-password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px;color:var(--text-muted,#888);">👁</button>
+            </div>
           </div>
           <div class="form-error" id="reg-error"></div>
           <button type="submit" class="btn btn-primary" id="btn-register">
@@ -102,6 +108,15 @@
     // Theme init
     Theme.init();
     document.getElementById('auth-theme-btn').addEventListener('click', () => Theme.toggle());
+
+    // Password show/hide toggles
+    document.querySelectorAll('.pw-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+        else { input.type = 'password'; btn.textContent = '👁'; }
+      });
+    });
 
     // Tab switching
     function showTab(tab) {

@@ -6,7 +6,7 @@ const CONFIG = {
   // ===== GAS Web App URL =====
   // วิธีได้ URL: Apps Script > Deploy > New deployment > Web app > Copy URL
   // ใส่ URL ที่ได้จากการ deploy ที่นี่:
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbypOPuScknnF_fCAD1aWuOMofKjb-mCw3aU-ff_RSmfU3u8lUmlWc_kMAMZKUga7vx1Pw/exec',
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbyCfXv1Y3RMhHXTrMlXNesfZh72QtvNYlKSgVnEI8Pn5o6zmEg8zCycQ6qXZ3svajqasg/exec',
 
   // ===== Admin Email =====
   ADMIN_EMAIL: 'krumum.piano@gmail.com',
