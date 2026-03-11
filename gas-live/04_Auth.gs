@@ -75,6 +75,28 @@ function handleLogout_(body) {
   return jsonOk_({ message: "ออกจากระบบสำเร็จ" });
 }
 
+function handleChangePassword_(body) {
+  var sess = verifyUser_(body.token);
+  if (!sess) return jsonErr_("กรุณาเข้าสู่ระบบ", 401);
+  var oldPw = body.old_password || "";
+  var newPw = body.new_password || "";
+  if (!oldPw || !newPw) return jsonErr_("กรุณากรอกรหัสผ่านเก่าและใหม่");
+  if (newPw.length < 6) return jsonErr_("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร");
+
+  var users = getRows_(SH_USERS), user = null;
+  for (var i = 0; i < users.length; i++) {
+    if (users[i].uid === sess.uid) { user = users[i]; break; }
+  }
+  if (!user) return jsonErr_("ไม่พบผู้ใช้");
+  if (hashPassword_(oldPw, user.salt) !== user.password_hash) return jsonErr_("รหัสผ่านเก่าไม่ถูกต้อง");
+
+  var newSalt = uuid_(), newHash = hashPassword_(newPw, newSalt);
+  var sheet = getSS_().getSheetByName(SH_USERS);
+  sheet.getRange(user._row, 4).setValue(newHash);
+  sheet.getRange(user._row, 5).setValue(newSalt);
+  return jsonOk_({message: "เปลี่ยนรหัสผ่านสำเร็จ"});
+}
+
 function verifyAdmin_(token) {
   if (!token) return null;
   var s = getRows_(SH_SESSIONS);

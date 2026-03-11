@@ -32,6 +32,7 @@ function doPost(e) {
     case "save-setlist":      return handleSaveSetlist_(body);
     case "delete-setlist":    return handleDeleteSetlist_(body);
     case "add-recent":        return handleAddRecent_(body);
+    case "change-password":   return handleChangePassword_(body);
     default:                  return jsonErr_("Unknown action: " + action, 404);
   }
 }
