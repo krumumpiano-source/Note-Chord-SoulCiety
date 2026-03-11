@@ -13,6 +13,7 @@ function doGet(e) {
     case "get-favorites":    return handleGetFavorites_(p.token);
     case "get-setlists":     return handleGetSetlists_(p.token);
     case "get-recent":       return handleGetRecent_(p.token);
+    case "get-pdf":          return handleGetPdf_(p.token, p.fileId);
     default:                 return jsonErr_("Unknown action: " + action, 404);
   }
 }

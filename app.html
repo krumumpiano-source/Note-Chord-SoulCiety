@@ -10,6 +10,10 @@
   <link rel="stylesheet" href="css/themes.css">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/viewer.css">
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body>
   <div class="app-shell">
@@ -131,23 +135,24 @@
   <div class="viewer-overlay" id="viewer-overlay">
     <div class="viewer-toolbar">
       <button class="viewer-btn" onclick="Viewer.close()" title="ปิด (Esc)">✕</button>
+      <button class="viewer-btn" id="viewer-prev" onclick="Viewer.prevSong()" style="display:none" title="เพลงก่อนหน้า">❮</button>
       <div class="viewer-divider"></div>
       <span class="viewer-title" id="viewer-title"></span>
       <div class="viewer-divider"></div>
+      <button class="viewer-btn" id="viewer-next" onclick="Viewer.nextSong()" style="display:none" title="เพลงถัดไป">❯</button>
       <div class="viewer-actions">
         <button class="viewer-btn" id="viewer-fav-btn" onclick="Viewer.toggleFavorite()" title="รายการโปรด">☆</button>
         <button class="viewer-btn" onclick="Viewer.showSetlistPicker()" title="เพิ่มใน Setlist">📋</button>
       </div>
     </div>
-    <div class="viewer-body">
+    <div class="viewer-body" id="viewer-body">
       <div class="viewer-loading" id="viewer-loading">
         <div class="viewer-loading-spinner"></div>
         <div class="viewer-loading-text">กำลังโหลด…</div>
       </div>
-      <iframe class="viewer-iframe" id="viewer-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" title="PDF Viewer"></iframe>
-      <!-- Navigation arrows -->
-      <button class="viewer-nav viewer-nav-prev" id="viewer-prev" onclick="Viewer.prev()" style="display:none;" title="เพลงก่อนหน้า (←)">❮</button>
-      <button class="viewer-nav viewer-nav-next" id="viewer-next" onclick="Viewer.next()" style="display:none;" title="เพลงถัดไป (→)">❯</button>
+      <canvas id="viewer-canvas"></canvas>
+      <!-- Page indicator -->
+      <div class="viewer-page-indicator" id="viewer-page-indicator"></div>
       <!-- Setlist picker dropdown -->
       <div class="viewer-setlist-picker" id="viewer-setlist-picker"></div>
     </div>

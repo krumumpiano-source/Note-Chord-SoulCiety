@@ -2,6 +2,21 @@
  *  Note Chord SoulCiety — SONGS
  ***********************************************/
 
+function handleGetPdf_(token, fileId) {
+  var sess = verifyUser_(token);
+  if (!sess) return jsonErr_("กรุณาเข้าสู่ระบบ", 401);
+  if (!fileId) return jsonErr_("Missing fileId");
+  try {
+    var file = DriveApp.getFileById(fileId);
+    var mime = file.getMimeType();
+    var blob = file.getBlob();
+    var base64 = Utilities.base64Encode(blob.getBytes());
+    return jsonOk_({ content: base64, mimeType: mime });
+  } catch(e) {
+    return jsonErr_("ไม่สามารถโหลดไฟล์ได้: " + e.message);
+  }
+}
+
 function handleListSongs_() {
   var sheet;
   try { sheet = getSS_().getSheetByName(SH_SONGS); } catch(e) { return jsonErr_("initApp not run"); }

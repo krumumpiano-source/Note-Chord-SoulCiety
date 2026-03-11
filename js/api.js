@@ -124,5 +124,11 @@ const API = {
 
   addRecent(token, songName, songUrl) {
     return this.post('add-recent', { token, song_name: songName, song_url: songUrl });
+  },
+
+  /* ---------- PDF ---------- */
+
+  getPdf(token, fileId) {
+    return this.get('get-pdf', { token, fileId });
   }
 };
