@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Note Chord SoulCiety — เข้าสู่ระบบ</title>
+  <meta name="description" content="Note Chord SoulCiety — ระบบจัดการโน้ตเพลง คอร์ดเพลง สำหรับนักดนตรี">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+  <!-- Theme Toggle -->
+  <button class="auth-theme-toggle theme-icon" id="auth-theme-btn" title="เปลี่ยนธีม">🌙</button>
+
+  <div class="auth-wrapper">
+    <div class="auth-container">
+      <!-- Logo -->
+      <div class="auth-logo">
+        <div class="auth-logo-icon">🎵</div>
+        <h1>Note Chord SoulCiety</h1>
+        <p>ระบบจัดการโน้ตเพลง &amp; คอร์ดเพลง</p>
+      </div>
+
+      <!-- Auth Card -->
+      <div class="auth-card">
+        <!-- Tabs -->
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login" id="tab-login">เข้าสู่ระบบ</button>
+          <button class="auth-tab" data-tab="register" id="tab-register">สมัครสมาชิก</button>
+        </div>
+
+        <!-- Login Form -->
+        <form class="auth-form active" id="form-login" autocomplete="on">
+          <div class="form-group">
+            <label for="login-email">อีเมล</label>
+            <input type="email" id="login-email" class="form-input" placeholder="your@email.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="login-password">รหัสผ่าน</label>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+          <div class="form-error" id="login-error"></div>
+          <button type="submit" class="btn btn-primary" id="btn-login">
+            <span class="btn-text">เข้าสู่ระบบ</span>
+            <span class="btn-spinner"></span>
+          </button>
+        </form>
+
+        <!-- Register Form -->
+        <form class="auth-form" id="form-register" autocomplete="on">
+          <div class="form-group">
+            <label for="reg-name">ชื่อ - นามสกุล</label>
+            <input type="text" id="reg-name" class="form-input" placeholder="ชื่อที่แสดงในระบบ" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="reg-email">อีเมล</label>
+            <input type="email" id="reg-email" class="form-input" placeholder="your@email.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="reg-password">รหัสผ่าน</label>
+            <input type="password" id="reg-password" class="form-input" placeholder="อย่างน้อย 6 ตัวอักษร" required minlength="6" autocomplete="new-password">
+          </div>
+          <div class="form-error" id="reg-error"></div>
+          <button type="submit" class="btn btn-primary" id="btn-register">
+            <span class="btn-text">สมัครสมาชิก</span>
+            <span class="btn-spinner"></span>
+          </button>
+        </form>
+
+        <!-- Pending Message (after register) -->
+        <div class="auth-message" id="msg-pending">
+          <div class="auth-message-icon">⏳</div>
+          <h3>รอการอนุมัติ</h3>
+          <p>บัญชีของคุณถูกสร้างแล้ว<br>กรุณารอ Admin อนุมัติก่อนเข้าใช้งาน</p>
+          <button class="btn-link" onclick="showTab('login')">กลับไปหน้าเข้าสู่ระบบ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/auth.js"></script>
+
+  <script>
+    // Check if already logged in
+    (async function checkSession() {
+      const token = Auth.getToken();
+      if (token) {
+        const valid = await Auth.verifySession(token);
+        if (valid) {
+          window.location.href = 'app.html';
+          return;
+        }
+      }
+    })();
+
+    // Theme init
+    Theme.init();
+    document.getElementById('auth-theme-btn').addEventListener('click', () => Theme.toggle());
+
+    // Tab switching
+    function showTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById('msg-pending').classList.remove('visible');
+
+      if (tab === 'login') {
+        document.getElementById('form-login').classList.add('active');
+      } else {
+        document.getElementById('form-register').classList.add('active');
+      }
+    }
+
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+      tab.addEventListener('click', () => showTab(tab.dataset.tab));
+    });
+
+    // Login
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-login');
+      const errEl = document.getElementById('login-error');
+      errEl.classList.remove('visible');
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      const res = await Auth.login(email, password);
+
+      btn.classList.remove('loading');
+      btn.disabled = false;
+
+      if (res.success) {
+        window.location.href = 'app.html';
+      } else {
+        errEl.textContent = res.error;
+        errEl.classList.add('visible');
+      }
+    });
+
+    // Register
+    document.getElementById('form-register').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-register');
+      const errEl = document.getElementById('reg-error');
+      errEl.classList.remove('visible');
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      const name = document.getElementById('reg-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+
+      if (password.length < 6) {
+        errEl.textContent = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+        errEl.classList.add('visible');
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        return;
+      }
+
+      const res = await Auth.register(name, email, password);
+
+      btn.classList.remove('loading');
+      btn.disabled = false;
+
+      if (res.success) {
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+        document.getElementById('msg-pending').classList.add('visible');
+      } else {
+        errEl.textContent = res.error;
+        errEl.classList.add('visible');
+      }
+    });
+  </script>
+</body>
+</html>

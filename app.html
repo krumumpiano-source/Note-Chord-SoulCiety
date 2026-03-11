@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Note Chord SoulCiety</title>
+  <meta name="description" content="Note Chord SoulCiety — ระบบจัดการโน้ตเพลง คอร์ดเพลง สำหรับนักดนตรี">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/viewer.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <!-- Brand -->
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-icon">🎵</div>
+          <div>
+            <div class="sidebar-brand-text">Note Chord SoulCiety<span class="sidebar-brand-version">v1.0</span></div>
+          </div>
+        </div>
+
+        <!-- User Info -->
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar" id="user-avatar">U</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="user-name">Loading…</div>
+            <span class="sidebar-user-package pkg-free" id="user-package">🎵 Free</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">เมนูหลัก</div>
+          <button class="nav-item active" data-view="library">
+            <span class="nav-item-icon">📚</span>
+            <span class="nav-item-label">คลังเพลง</span>
+          </button>
+          <button class="nav-item" data-view="favorites">
+            <span class="nav-item-icon">⭐</span>
+            <span class="nav-item-label">รายการโปรด</span>
+            <span class="nav-item-badge" id="fav-badge" style="display:none;"></span>
+          </button>
+          <button class="nav-item" data-view="recent">
+            <span class="nav-item-icon">🕐</span>
+            <span class="nav-item-label">เพลงล่าสุด</span>
+            <span class="nav-item-badge" id="recent-badge" style="display:none;"></span>
+          </button>
+          <button class="nav-item" data-view="setlists">
+            <span class="nav-item-icon">📋</span>
+            <span class="nav-item-label">Setlists</span>
+          </button>
+        </div>
+
+        <div class="nav-section" id="nav-admin" style="display:none;">
+          <div class="nav-section-title">จัดการระบบ</div>
+          <button class="nav-item" data-view="admin">
+            <span class="nav-item-icon">⚙️</span>
+            <span class="nav-item-label">Admin Panel</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <button class="nav-item" id="btn-logout">
+          <span class="nav-item-icon">🚪</span>
+          <span class="nav-item-label">ออกจากระบบ</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Mobile sidebar overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- ===== Main Content ===== -->
+    <div class="main-content">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <button class="topbar-hamburger" id="topbar-hamburger" title="เมนู">☰</button>
+        <span class="topbar-title" id="topbar-title">คลังเพลง</span>
+
+        <!-- Search -->
+        <div class="topbar-search">
+          <span class="topbar-search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="ค้นหาเพลง…" autocomplete="off">
+        </div>
+
+        <!-- Actions -->
+        <div class="topbar-actions">
+          <!-- View Toggle -->
+          <div class="topbar-view-toggle">
+            <button class="topbar-btn active" data-view="grid" title="มุมมองตาราง">▦</button>
+            <button class="topbar-btn" data-view="list" title="มุมมองรายการ">☰</button>
+          </div>
+
+          <!-- Sort -->
+          <div class="sort-dropdown">
+            <button class="topbar-btn" id="sort-btn" title="เรียงลำดับ">↕</button>
+            <div class="sort-menu" id="sort-menu">
+              <button class="sort-menu-item active" data-sort="az">🔤 ก-ฮ / A-Z</button>
+              <button class="sort-menu-item" data-sort="za">🔤 ฮ-ก / Z-A</button>
+            </div>
+          </div>
+
+          <!-- Theme -->
+          <button class="topbar-btn theme-icon" id="theme-btn" title="เปลี่ยนธีม">☀️</button>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+      <main class="content-area" id="content-area">
+        <div class="loading-overlay">
+          <div class="loading-spinner"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== PDF Viewer Overlay ===== -->
+  <div class="viewer-overlay" id="viewer-overlay">
+    <div class="viewer-toolbar">
+      <button class="viewer-btn" onclick="Viewer.close()" title="ปิด (Esc)">✕</button>
+      <div class="viewer-divider"></div>
+      <span class="viewer-title" id="viewer-title"></span>
+      <div class="viewer-divider"></div>
+      <div class="viewer-actions">
+        <button class="viewer-btn" id="viewer-fav-btn" onclick="Viewer.toggleFavorite()" title="รายการโปรด">☆</button>
+        <button class="viewer-btn" onclick="Viewer.showSetlistPicker()" title="เพิ่มใน Setlist">📋</button>
+      </div>
+    </div>
+    <div class="viewer-body">
+      <div class="viewer-loading" id="viewer-loading">
+        <div class="viewer-loading-spinner"></div>
+        <div class="viewer-loading-text">กำลังโหลด…</div>
+      </div>
+      <iframe class="viewer-iframe" id="viewer-iframe" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" title="PDF Viewer"></iframe>
+      <!-- Navigation arrows -->
+      <button class="viewer-nav viewer-nav-prev" id="viewer-prev" onclick="Viewer.prev()" style="display:none;" title="เพลงก่อนหน้า (←)">❮</button>
+      <button class="viewer-nav viewer-nav-next" id="viewer-next" onclick="Viewer.next()" style="display:none;" title="เพลงถัดไป (→)">❯</button>
+      <!-- Setlist picker dropdown -->
+      <div class="viewer-setlist-picker" id="viewer-setlist-picker"></div>
+    </div>
+  </div>
+
+  <!-- ===== Setlist Picker Modal ===== -->
+  <div class="modal-overlay" id="setlist-picker-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">เพิ่มใน Setlist</span>
+        <button class="modal-close" onclick="document.getElementById('setlist-picker-modal').classList.remove('open')">✕</button>
+      </div>
+      <div class="modal-body" id="setlist-picker-body"></div>
+    </div>
+  </div>
+
+  <!-- ===== Toast Container ===== -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts (order matters) -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/favorites.js"></script>
+  <script src="js/recent.js"></script>
+  <script src="js/setlists.js"></script>
+  <script src="js/library.js"></script>
+  <script src="js/viewer.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
