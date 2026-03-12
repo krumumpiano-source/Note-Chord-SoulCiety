@@ -105,6 +105,22 @@ const API = {
     return this.post('admin-set-package', { token, uid, 'package': pkg });
   },
 
+  adminBlock(token, uid) {
+    return this.post('admin-block', { token, uid });
+  },
+
+  adminUnblock(token, uid) {
+    return this.post('admin-unblock', { token, uid });
+  },
+
+  adminResetPassword(token, uid, newPassword) {
+    return this.post('admin-reset-pw', { token, uid, new_password: newPassword });
+  },
+
+  adminDeleteUser(token, uid) {
+    return this.post('admin-delete-user', { token, uid });
+  },
+
   /* ---------- Favorites ---------- */
 
   getFavorites(token) {

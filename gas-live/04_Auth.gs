@@ -36,6 +36,7 @@ function handleLogin_(body) {
   if (hashPassword_(pw, user.salt) !== user.password_hash) return jsonErr_("รหัสผ่านไม่ถูกต้อง");
   if (user.status === "pending") return jsonErr_("บัญชีของคุณยังรอการอนุมัติจากแอดมิน");
   if (user.status === "rejected") return jsonErr_("บัญชีของคุณถูกปฏิเสธ");
+  if (user.status === "blocked") return jsonErr_("บัญชีของคุณถูกระงับ กรุณาติดต่อแอดมิน");
 
   var token = uuid_(), role = (email === ADMIN_EMAIL) ? "admin" : "member";
   var exp = new Date(); exp.setHours(exp.getHours() + SESSION_HOURS);

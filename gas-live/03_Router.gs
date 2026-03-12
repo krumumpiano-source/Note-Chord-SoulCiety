@@ -29,6 +29,10 @@ function doPost(e) {
     case "admin-approve":     return handleAdminApprove_(body);
     case "admin-reject":      return handleAdminReject_(body);
     case "admin-set-package": return handleAdminSetPackage_(body);
+    case "admin-block":       return handleAdminBlockUser_(body);
+    case "admin-unblock":     return handleAdminUnblockUser_(body);
+    case "admin-reset-pw":    return handleAdminResetPassword_(body);
+    case "admin-delete-user": return handleAdminDeleteUser_(body);
     case "toggle-favorite":   return handleToggleFavorite_(body);
     case "save-setlist":      return handleSaveSetlist_(body);
     case "delete-setlist":    return handleDeleteSetlist_(body);
