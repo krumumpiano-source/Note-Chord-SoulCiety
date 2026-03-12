@@ -57,6 +57,12 @@ const Admin = {
   renderSongsTab() {
     let html = '';
 
+    // Sync from Drive button
+    html += '<div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;">';
+    html += '<button class="btn btn-primary" id="sync-drive-btn" onclick="Admin.syncFromDrive()">\u{1F504} Sync \u0e08\u0e32\u0e01 Google Drive</button>';
+    html += '<span id="sync-status" style="color:var(--text-muted);font-size:0.85rem;"></span>';
+    html += '</div>';
+
     // Upload area
     html += '<div class="admin-upload-area" id="upload-area">';
     html += '<div class="upload-icon">\ud83d\udcc2</div>';
@@ -151,6 +157,32 @@ const Admin = {
     return this.users.filter(u =>
       u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
     );
+  },
+
+  async syncFromDrive() {
+    const btn = document.getElementById('sync-drive-btn');
+    const status = document.getElementById('sync-status');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = '\u{1F504} Syncing...';
+    status.textContent = '';
+    const token = Auth.getToken();
+    const res = await API.syncSongsFromDrive(token);
+    if (res.success) {
+      const d = res.data;
+      status.textContent = '\u2705 \u0e40\u0e1e\u0e34\u0e48\u0e21 ' + d.added + ' / \u0e25\u0e1a ' + d.removed + ' / \u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14 ' + d.total + ' \u0e40\u0e1e\u0e25\u0e07';
+      status.style.color = '#4caf50';
+      // Reload song list
+      const sRes = await API.adminListSongs(token);
+      if (sRes.success && sRes.data) this.songs = sRes.data.songs || [];
+      localStorage.removeItem('ncs-songs-cache');
+      this.renderView();
+    } else {
+      status.textContent = '\u274C ' + (res.error || 'Sync failed');
+      status.style.color = '#f44336';
+    }
+    btn.disabled = false;
+    btn.textContent = '\u{1F504} Sync \u0e08\u0e32\u0e01 Google Drive';
   },
 
   renderSection(title, count, type) {

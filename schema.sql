@@ -58,5 +58,10 @@ CREATE INDEX IF NOT EXISTS idx_sessions_uid ON sessions(uid);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_favorites_uid ON favorites(uid);
 CREATE INDEX IF NOT EXISTS idx_setlists_uid ON setlists(uid);
+
+CREATE TABLE IF NOT EXISTS sync_meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_recent_uid ON recent(uid);
 CREATE INDEX IF NOT EXISTS idx_recent_viewed ON recent(uid, viewed_at);

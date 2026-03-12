@@ -85,6 +85,10 @@ const API = {
     return this.get('admin', { action: 'list-songs', token });
   },
 
+  syncSongsFromDrive(token) {
+    return this.post('sync-songs', { token });
+  },
+
   adminApprove(token, uid) {
     return this.post('admin', { action: 'approve', token, uid });
   },

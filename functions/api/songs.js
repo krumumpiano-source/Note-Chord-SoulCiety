@@ -1,10 +1,18 @@
 ﻿import { jsonOk, jsonErr, verifyUser } from '../_helpers.js';
+import { shouldSync, syncFromSheet } from './sync-songs.js';
 
 export async function onRequestGet(context) {
   const db = context.env.DB;
   const url = new URL(context.request.url);
   const token = url.searchParams.get('token');
   const id = url.searchParams.get('id');
+
+  // Auto-sync from Google Sheet if stale (>5 min)
+  try {
+    if (await shouldSync(db)) {
+      context.waitUntil(syncFromSheet(db));
+    }
+  } catch (_) { /* ignore sync errors, serve cached data */ }
 
   if (id) {
     const s = await verifyUser(db, token);
