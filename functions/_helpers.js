@@ -32,20 +32,4 @@ export async function verifyUser(db, token) {
     .bind(token, now()).first();
 }
 
-export function uint8ToBase64(u8) {
-  const CHUNK = 0x8000;
-  const parts = [];
-  for (let i = 0; i < u8.length; i += CHUNK) {
-    parts.push(String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK)));
-  }
-  return btoa(parts.join(''));
-}
 
-export function base64ToUint8(b64) {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}

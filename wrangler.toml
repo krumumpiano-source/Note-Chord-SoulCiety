@@ -5,8 +5,4 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "note-chord-soulciety"
-database_id = "YOUR_DATABASE_ID"
-
-[[r2_buckets]]
-binding = "SONGS"
-bucket_name = "note-chord-songs"
+database_id = "9adc6f93-db09-4a97-91dd-e5ab42eed1ec"

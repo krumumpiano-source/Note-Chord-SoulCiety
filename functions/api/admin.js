@@ -2,7 +2,6 @@
 
 export async function onRequestGet(context) {
   const db = context.env.DB;
-  const r2 = context.env.SONGS;
   const url = new URL(context.request.url);
   const token = url.searchParams.get('token');
   const action = url.searchParams.get('action');
@@ -33,7 +32,6 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   const db = context.env.DB;
-  const r2 = context.env.SONGS;
   const body = await context.request.json();
   const { action, token } = body;
 
@@ -79,8 +77,6 @@ export async function onRequestPost(context) {
     return jsonOk({ message: 'ลบผู้ใช้แล้ว' });
   }
   if (action === 'delete-song') {
-    const song = await db.prepare('SELECT r2_key FROM songs WHERE id = ?').bind(body.song_id).first();
-    if (song && song.r2_key) await r2.delete(song.r2_key);
     await db.prepare('DELETE FROM favorites WHERE song_url = ?').bind(String(body.song_id)).run();
     await db.prepare('DELETE FROM recent WHERE song_url = ?').bind(String(body.song_id)).run();
     await db.prepare('DELETE FROM songs WHERE id = ?').bind(body.song_id).run();

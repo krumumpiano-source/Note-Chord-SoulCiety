@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS songs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   mime_type TEXT NOT NULL,
-  r2_key TEXT NOT NULL,
+  file_data TEXT NOT NULL,
   uploaded_at TEXT NOT NULL
 );
 
