@@ -187,6 +187,10 @@
       btn.disabled = false;
 
       if (res.success) {
+        if (res.autoLogin) {
+          window.location.href = 'app.html';
+          return;
+        }
         document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
         document.getElementById('msg-pending').classList.add('visible');
       } else {

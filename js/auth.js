@@ -57,7 +57,11 @@ const Auth = {
 
   async register(name, email, password) {
     const res = await API.register(name, email, password);
-    if (res.success) {
+    if (res.success && res.data) {
+      if (res.data.token) {
+        this.setSession(res.data.token, res.data);
+        return { success: true, autoLogin: true };
+      }
       return { success: true, message: res.data.message };
     }
     return { success: false, error: res.error || 'สมัครสมาชิกไม่สำเร็จ' };
