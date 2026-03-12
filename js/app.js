@@ -188,6 +188,9 @@ const App = {
       case 'admin':
         Admin.renderView();
         break;
+      case 'livemode':
+        LiveMode.renderView();
+        break;
       case 'settings':
         this.renderSettings();
         break;

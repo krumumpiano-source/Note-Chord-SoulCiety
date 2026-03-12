@@ -14,6 +14,9 @@
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+
+  <!-- Supabase (for Live Mode sync with BandThai) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -59,6 +62,11 @@
           <button class="nav-item" data-view="setlists">
             <span class="nav-item-icon">📋</span>
             <span class="nav-item-label">Setlists</span>
+          </button>
+          <button class="nav-item" data-view="livemode">
+            <span class="nav-item-icon">🎸</span>
+            <span class="nav-item-label">Live Mode</span>
+            <span class="nav-item-badge" id="live-badge" style="display:none;color:#f44336;"></span>
           </button>
         </div>
 
@@ -183,6 +191,7 @@
   <script src="js/setlists.js"></script>
   <script src="js/library.js"></script>
   <script src="js/viewer.js"></script>
+  <script src="js/livemode.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/app.js"></script>
 </body>
