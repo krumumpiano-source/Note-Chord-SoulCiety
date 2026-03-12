@@ -1,0 +1,12 @@
+name = "note-chord-soulciety"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "note-chord-soulciety"
+database_id = "YOUR_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "SONGS"
+bucket_name = "note-chord-songs"

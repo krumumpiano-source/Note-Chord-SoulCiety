@@ -11,3 +11,5 @@ Thumbs.db
 *.log
 node_modules/
 .vercel/
+.wrangler/
+.dev.vars
