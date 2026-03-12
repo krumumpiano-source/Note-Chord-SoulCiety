@@ -38,8 +38,8 @@ const Auth = {
     if (!token) return false;
 
     const res = await API.verifySession(token);
-    if (res.success && res.data && res.data.user) {
-      sessionStorage.setItem(this.USER_KEY, JSON.stringify(res.data.user));
+    if (res.success && res.data && res.data.uid) {
+      sessionStorage.setItem(this.USER_KEY, JSON.stringify(res.data));
       return true;
     }
     this.clearSession();
@@ -49,7 +49,7 @@ const Auth = {
   async login(email, password) {
     const res = await API.login(email, password);
     if (res.success && res.data && res.data.token) {
-      this.setSession(res.data.token, res.data.user);
+      this.setSession(res.data.token, res.data);
       return { success: true };
     }
     return { success: false, error: res.error || 'เข้าสู่ระบบไม่สำเร็จ' };
