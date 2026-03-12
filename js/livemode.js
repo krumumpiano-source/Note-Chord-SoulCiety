@@ -13,6 +13,8 @@ const LiveMode = {
   playlist: [],
   currentIdx: -1,
   joinedAt: 0,
+  pendingSong: null,       // { idx, name } waiting for user confirmation
+  verifiedEmail: false,    // whether email was verified against BandThai
 
   /* ---------- Render connection UI ---------- */
   renderView() {
@@ -84,7 +86,23 @@ const LiveMode = {
           <div style="font-size:1.3rem;font-weight:700;color:var(--accent);" id="live-now-playing">${this.escapeHtml(songName)}</div>
           <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;" id="live-match-status"></div>
         </div>
+    `;
 
+    // Show pending song notification in the active view
+    if (this.pendingSong) {
+      html += `
+        <div style="background:linear-gradient(135deg,#1a237e,#283593);border-radius:12px;padding:1rem;margin-bottom:1rem;color:#fff;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.8rem;opacity:0.8;">⏭ เพลงถัดไปรอยืนยัน</div>
+            <div style="font-size:1.1rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(this.pendingSong.name)}</div>
+          </div>
+          <button onclick="LiveMode.confirmSongChange()" style="background:#4caf50;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:600;cursor:pointer;">✅ เปลี่ยน</button>
+          <button onclick="LiveMode.dismissSongChange()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 12px;border-radius:8px;cursor:pointer;">✕</button>
+        </div>
+      `;
+    }
+
+    html += `
         <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">Playlist (${this.playlist.length} เพลง)</div>
         <div id="live-playlist-list" style="display:flex;flex-direction:column;gap:4px;">
     `;
@@ -104,13 +122,20 @@ const LiveMode = {
   },
 
   /* ---------- Connect to BandThai Broadcast ---------- */
-  connect() {
+  async connect() {
     const bandId = (document.getElementById('live-band-id')?.value || '').trim();
     const date = (document.getElementById('live-date')?.value || '').trim();
     const timeSlot = (document.getElementById('live-timeslot')?.value || '').trim();
 
     if (!bandId) { App.toast('กรุณาใส่ Band ID', 'error'); return; }
     if (!date) { App.toast('กรุณาเลือกวันที่', 'error'); return; }
+
+    // Check NCS login
+    const ncsUser = Auth.getUser();
+    if (!ncsUser || !ncsUser.email) {
+      App.toast('กรุณาล็อคอินก่อนใช้ Live Mode', 'error');
+      return;
+    }
 
     this.bandId = bandId;
     this.date = date;
@@ -131,7 +156,49 @@ const LiveMode = {
       );
     }
 
+    // Verify email against BandThai band members
+    App.toast('กำลังตรวจสอบสิทธิ์...', 'info');
+    const verified = await this.verifyBandMember(ncsUser.email, bandId);
+    if (!verified) {
+      App.toast('อีเมล ' + ncsUser.email + ' ไม่ตรงกับสมาชิกในวง กรุณาใช้อีเมลเดียวกับ BandThai', 'error');
+      return;
+    }
+    this.verifiedEmail = true;
+
     this.initChannel();
+  },
+
+  /* ---------- Verify email is a BandThai band member ---------- */
+  async verifyBandMember(email, bandId) {
+    const emailLower = email.toLowerCase().trim();
+
+    // Method 1: Try get_band_profiles RPC (SECURITY DEFINER — works with anon key)
+    try {
+      const { data, error } = await this.sb.rpc('get_band_profiles', { p_band_id: bandId });
+      if (!error && data && Array.isArray(data)) {
+        return data.some(m => m.email && m.email.toLowerCase().trim() === emailLower);
+      }
+    } catch (e) { /* fallback below */ }
+
+    // Method 2: Try band_members table
+    try {
+      const { data, error } = await this.sb.from('band_members').select('email').eq('band_id', bandId);
+      if (!error && data && Array.isArray(data)) {
+        return data.some(m => m.email && m.email.toLowerCase().trim() === emailLower);
+      }
+    } catch (e) { /* fallback below */ }
+
+    // Method 3: Try profiles table directly
+    try {
+      const { data, error } = await this.sb.from('profiles')
+        .select('id')
+        .eq('email', emailLower)
+        .eq('band_id', bandId)
+        .limit(1);
+      if (!error && data && data.length > 0) return true;
+    } catch (e) { /* all methods failed */ }
+
+    return false;
   },
 
   getChannelName() {
@@ -244,17 +311,73 @@ const LiveMode = {
 
   /* ---------- Song changed handler ---------- */
   onSongChanged(idx) {
-    this.currentIdx = idx;
     const song = this.playlist[idx];
     if (!song) return;
 
-    // Update UI
-    const nowEl = document.getElementById('live-now-playing');
-    if (nowEl) nowEl.textContent = song.name;
+    // If this is the very first song (no current yet), open immediately
+    if (this.currentIdx === -1) {
+      this.currentIdx = idx;
+      const nowEl = document.getElementById('live-now-playing');
+      if (nowEl) nowEl.textContent = song.name;
+      this.openMatchingSong(song.name);
+      this.updateActiveView();
+      return;
+    }
 
-    // Find matching song in Note Chord library
-    this.openMatchingSong(song.name);
+    // Store as pending — user must confirm before switching
+    this.pendingSong = { idx, name: song.name };
+    this.showSongConfirmation(song.name);
     this.updateActiveView();
+  },
+
+  /* ---------- Show confirmation banner ---------- */
+  showSongConfirmation(songName) {
+    // Remove existing banner if any
+    this.hideSongConfirmation();
+
+    const banner = document.createElement('div');
+    banner.id = 'live-song-confirm';
+    banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:10000;background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.3);animation:slideUpBanner 0.3s ease;';
+    banner.innerHTML = `
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:0.8rem;opacity:0.8;">⏭ เพลงถัดไป</div>
+        <div style="font-size:1.1rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(songName)}</div>
+      </div>
+      <button onclick="LiveMode.confirmSongChange()" style="background:#4caf50;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;white-space:nowrap;">
+        ✅ เปลี่ยนเพลง
+      </button>
+      <button onclick="LiveMode.dismissSongChange()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:10px 16px;border-radius:8px;font-size:0.95rem;cursor:pointer;white-space:nowrap;">
+        ✕
+      </button>
+    `;
+    document.body.appendChild(banner);
+  },
+
+  /* ---------- User confirms song change ---------- */
+  confirmSongChange() {
+    if (!this.pendingSong) return;
+    const { idx, name } = this.pendingSong;
+    this.currentIdx = idx;
+    this.pendingSong = null;
+    this.hideSongConfirmation();
+
+    const nowEl = document.getElementById('live-now-playing');
+    if (nowEl) nowEl.textContent = name;
+
+    this.openMatchingSong(name);
+    this.updateActiveView();
+  },
+
+  /* ---------- User dismisses (stays on current sheet) ---------- */
+  dismissSongChange() {
+    this.pendingSong = null;
+    this.hideSongConfirmation();
+  },
+
+  /* ---------- Remove confirmation banner ---------- */
+  hideSongConfirmation() {
+    const existing = document.getElementById('live-song-confirm');
+    if (existing) existing.remove();
   },
 
   /* ---------- Match & open sheet music ---------- */
@@ -306,6 +429,9 @@ const LiveMode = {
     this.active = false;
     this.playlist = [];
     this.currentIdx = -1;
+    this.pendingSong = null;
+    this.verifiedEmail = false;
+    this.hideSongConfirmation();
     this.updateSidebarIndicator(false);
     App.toast('ตัดการเชื่อมต่อ Live Mode แล้ว', 'info');
     if (App.currentView === 'livemode') this.renderView();

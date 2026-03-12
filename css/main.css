@@ -780,6 +780,11 @@ a:hover { color: var(--accent-hover); }
   to   { opacity: 0; transform: translateY(-10px); }
 }
 
+@keyframes slideUpBanner {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
 /* ===== Context Menu ===== */
 .context-menu {
   position: fixed;
