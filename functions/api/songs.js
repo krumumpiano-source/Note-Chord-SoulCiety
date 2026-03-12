@@ -13,10 +13,18 @@ export async function onRequestGet(context) {
     const song = await db.prepare('SELECT * FROM songs WHERE id = ?').bind(id).first();
     if (!song) return jsonErr('ไม่พบเพลง');
 
+    if (song.mime_type === 'drive/preview') {
+      return jsonOk({ driveUrl: song.file_data });
+    }
     return jsonOk({ content: song.file_data, mimeType: song.mime_type });
   }
 
-  const { results } = await db.prepare('SELECT id, name FROM songs ORDER BY name').all();
-  const list = results.map(r => ({ name: r.name, url: String(r.id) }));
-  return jsonOk(list);
+  const { results } = await db.prepare(
+    "SELECT id, name, CASE WHEN mime_type = 'drive/preview' THEN file_data ELSE NULL END AS drive_url FROM songs ORDER BY name"
+  ).all();
+  const list = results.map(r => ({
+    name: r.name,
+    url: r.drive_url || String(r.id)
+  }));
+  return jsonOk({ songs: list, total: list.length });
 }

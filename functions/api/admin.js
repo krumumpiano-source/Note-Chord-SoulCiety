@@ -17,14 +17,14 @@ export async function onRequestGet(context) {
         (SELECT COUNT(*) FROM recent r WHERE r.uid = u.uid) as rec_count
        FROM users u ORDER BY u.created_at DESC`
     ).all();
-    return jsonOk(users);
+    return jsonOk({ users });
   }
 
   if (action === 'list-songs') {
     const { results: songs } = await db.prepare(
       'SELECT id, name, mime_type, uploaded_at FROM songs ORDER BY name'
     ).all();
-    return jsonOk(songs);
+    return jsonOk({ songs });
   }
 
   return jsonErr('Unknown action');

@@ -65,6 +65,12 @@ const Viewer = {
 
   /* ---------- Load PDF or image ---------- */
   async loadContent(url) {
+    // Google Drive preview URL — show in iframe directly
+    if (url && url.startsWith('https://drive.google.com/')) {
+      this.showDrivePreview(url);
+      return;
+    }
+
     const fileId = this.extractFileId(url);
     if (!fileId) {
       this.showError('ไม่สามารถอ่าน File ID');
@@ -79,6 +85,12 @@ const Viewer = {
       return;
     }
 
+    // If backend returns a drive URL (fallback)
+    if (res.data.driveUrl) {
+      this.showDrivePreview(res.data.driveUrl);
+      return;
+    }
+
     const mime = res.data.mimeType || '';
     const base64 = res.data.content;
 
@@ -89,6 +101,31 @@ const Viewer = {
       this.isImage = false;
       await this.loadPdf(base64);
     }
+  },
+
+  /* ---------- Show Google Drive preview in iframe ---------- */
+  showDrivePreview(url) {
+    const canvas = document.getElementById('viewer-canvas');
+    canvas.style.display = 'none';
+    const img = document.getElementById('viewer-img');
+    if (img) img.style.display = 'none';
+
+    let iframe = document.getElementById('viewer-drive-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'viewer-drive-iframe';
+      iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;inset:0;background:#fff;';
+      iframe.setAttribute('allowfullscreen', 'true');
+      document.getElementById('viewer-body').appendChild(iframe);
+    }
+    iframe.src = url;
+    iframe.style.display = 'block';
+
+    this.isImage = false;
+    this.totalPages = 1;
+    this.currentPage = 1;
+    this.updatePageIndicator();
+    this.showLoading(false);
   },
 
   /* ---------- Show image ---------- */
@@ -263,6 +300,9 @@ const Viewer = {
     }
     const img = document.getElementById('viewer-img');
     if (img) { img.src = ''; img.style.display = 'none'; }
+
+    const iframe = document.getElementById('viewer-drive-iframe');
+    if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
 
     this.clearError();
     this.pdfDoc = null;
