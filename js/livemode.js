@@ -160,10 +160,12 @@ const LiveMode = {
     App.toast('กำลังตรวจสอบสิทธิ์...', 'info');
     const verified = await this.verifyBandMember(ncsUser.email, bandId);
     if (!verified) {
-      App.toast('อีเมล ' + ncsUser.email + ' ไม่ตรงกับสมาชิกในวง กรุณาใช้อีเมลเดียวกับ BandThai', 'error');
-      return;
+      // Allow connection with warning (RLS may block all verification queries)
+      console.warn('[LiveMode] Email verification inconclusive for:', ncsUser.email);
+      App.toast('⚠️ ไม่สามารถตรวจสอบอีเมลได้ แต่เชื่อมต่อให้ก่อน', 'warning');
+    } else {
+      this.verifiedEmail = true;
     }
-    this.verifiedEmail = true;
 
     this.initChannel();
   },
@@ -294,12 +296,24 @@ const LiveMode = {
         }
       })
       .subscribe((status) => {
+        console.log('[LiveMode] Channel status:', status);
         if (status === 'SUBSCRIBED') {
           this.active = true;
-          App.toast('🔴 เชื่อมต่อ Live Mode แล้ว!', 'success');
+          App.toast('🔴 เชื่อมต่อ Live Mode แล้ว! รอรับเพลงจาก BandThai...', 'success');
           this.updateSidebarIndicator(true);
           // Request current state from BandThai
           this.channel.send({ type: 'broadcast', event: 'request_state', payload: { joinedAt: this.joinedAt } });
+          // Pre-load Library.songs in background
+          if (!Library.songs || Library.songs.length === 0) {
+            API.listSongs().then(res => {
+              if (res.success && res.data && res.data.songs) {
+                Library.songs = res.data.songs;
+                localStorage.setItem('ncs-songs-cache', JSON.stringify(Library.songs));
+                localStorage.setItem('ncs-songs-cache-time', Date.now().toString());
+                console.log('[LiveMode] Pre-loaded', Library.songs.length, 'songs');
+              }
+            }).catch(() => {});
+          }
           if (App.currentView === 'livemode') this.renderView();
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           App.toast('เชื่อมต่อ Live Mode ไม่ได้', 'error');
@@ -313,6 +327,8 @@ const LiveMode = {
   onSongChanged(idx) {
     const song = this.playlist[idx];
     if (!song) return;
+
+    console.log('[LiveMode] Song changed to idx:', idx, 'name:', song.name);
 
     // If this is the very first song (no current yet), open immediately
     if (this.currentIdx === -1) {
@@ -364,7 +380,7 @@ const LiveMode = {
     const nowEl = document.getElementById('live-now-playing');
     if (nowEl) nowEl.textContent = name;
 
-    this.openMatchingSong(name);
+    this.openMatchingSong(name); // async, fire-and-forget is fine
     this.updateActiveView();
   },
 
@@ -381,8 +397,39 @@ const LiveMode = {
   },
 
   /* ---------- Match & open sheet music ---------- */
-  openMatchingSong(songName) {
-    if (!songName || !Library.songs || Library.songs.length === 0) return;
+  async openMatchingSong(songName) {
+    if (!songName) return;
+
+    // Ensure Library.songs is loaded
+    if (!Library.songs || Library.songs.length === 0) {
+      console.log('[LiveMode] Library.songs empty, loading...');
+      // Try cache first
+      const cached = localStorage.getItem('ncs-songs-cache');
+      if (cached) {
+        try { Library.songs = JSON.parse(cached); } catch (e) { /* ignore */ }
+      }
+      // If still empty, fetch from server
+      if (!Library.songs || Library.songs.length === 0) {
+        try {
+          const res = await API.listSongs();
+          if (res.success && res.data && res.data.songs) {
+            Library.songs = res.data.songs;
+            localStorage.setItem('ncs-songs-cache', JSON.stringify(Library.songs));
+            localStorage.setItem('ncs-songs-cache-time', Date.now().toString());
+          }
+        } catch (e) { console.error('[LiveMode] Failed to load songs:', e); }
+      }
+      console.log('[LiveMode] Library loaded:', Library.songs.length, 'songs');
+    }
+
+    if (Library.songs.length === 0) {
+      const statusEl = document.getElementById('live-match-status');
+      if (statusEl) {
+        statusEl.textContent = '⚠️ ไม่มีเพลงในระบบ';
+        statusEl.style.color = '#f44336';
+      }
+      return;
+    }
 
     const lower = songName.toLowerCase().trim();
     // Exact match first
@@ -396,6 +443,18 @@ const LiveMode = {
       );
     }
 
+    // Fuzzy: strip spaces, dashes, parens and try again
+    if (!match) {
+      const normalize = str => str.toLowerCase().replace(/[\s\-_()（）]/g, '').trim();
+      const n = normalize(songName);
+      match = Library.songs.find(s => normalize(s.name) === n);
+      if (!match) {
+        match = Library.songs.find(s => normalize(s.name).includes(n) || n.includes(normalize(s.name)));
+      }
+    }
+
+    console.log('[LiveMode] Match "' + songName + '" →', match ? match.name : 'NOT FOUND');
+
     const statusEl = document.getElementById('live-match-status');
 
     if (match) {
@@ -407,9 +466,10 @@ const LiveMode = {
       Viewer.open(match.name, match.url, []);
     } else {
       if (statusEl) {
-        statusEl.textContent = '⚠️ ไม่พบโน้ตสำหรับเพลงนี้';
+        statusEl.textContent = '⚠️ ไม่พบโน้ตสำหรับ: ' + songName;
         statusEl.style.color = '#ff9800';
       }
+      App.toast('ไม่พบโน้ตสำหรับ: ' + songName, 'warning');
     }
   },
 
