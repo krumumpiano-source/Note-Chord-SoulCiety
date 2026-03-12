@@ -5,6 +5,11 @@
 const Favorites = {
   LOCAL_KEY: 'ncs-favorites',
   list: [],
+  _nameSet: new Set(),  // O(1) lookup
+
+  _rebuildSet() {
+    this._nameSet = new Set(this.list.map(f => f.name));
+  },
 
   async load() {
     // Load from localStorage immediately
@@ -12,6 +17,7 @@ const Favorites = {
     if (cached) {
       try { this.list = JSON.parse(cached); } catch (e) { this.list = []; }
     }
+    this._rebuildSet();
 
     // Sync from server
     const token = Auth.getToken();
@@ -19,13 +25,14 @@ const Favorites = {
       const res = await API.getFavorites(token);
       if (res.success && res.data) {
         this.list = res.data.favorites || [];
+        this._rebuildSet();
         localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.list));
       }
     }
   },
 
   isFavorite(songName) {
-    return this.list.some(f => f.name === songName);
+    return this._nameSet.has(songName);
   },
 
   async toggleByName(songName, songUrl) {
@@ -37,8 +44,10 @@ const Favorites = {
     // Optimistic UI update
     if (was) {
       this.list = this.list.filter(f => f.name !== songName);
+      this._nameSet.delete(songName);
     } else {
       this.list.push({ name: songName, url: songUrl });
+      this._nameSet.add(songName);
     }
     localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.list));
 
@@ -48,8 +57,10 @@ const Favorites = {
       // Revert on failure
       if (was) {
         this.list.push({ name: songName, url: songUrl });
+        this._nameSet.add(songName);
       } else {
         this.list = this.list.filter(f => f.name !== songName);
+        this._nameSet.delete(songName);
       }
       localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.list));
       Toast.show(res.error || 'เกิดข้อผิดพลาด', 'error');

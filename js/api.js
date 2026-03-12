@@ -4,9 +4,15 @@
    ============================================ */
 
 const API = {
+  _pending: {},  // dedup: cache in-flight GET requests by key
+
   /* ---------- Core request methods ---------- */
 
   async get(action, params = {}) {
+    // Dedup identical in-flight GET requests
+    const key = action + '|' + JSON.stringify(params);
+    if (this._pending[key]) return this._pending[key];
+
     const url = new URL(CONFIG.GAS_URL);
     url.searchParams.set('action', action);
     Object.keys(params).forEach(k => {
@@ -15,18 +21,25 @@ const API = {
       }
     });
 
-    try {
-      const res = await fetch(url.toString(), { redirect: 'follow' });
-      const text = await res.text();
+    const promise = (async () => {
       try {
-        return JSON.parse(text);
-      } catch (e) {
-        // GAS sometimes returns HTML on error
-        return { success: false, error: 'เซิร์ฟเวอร์ตอบกลับผิดพลาด' };
+        const res = await fetch(url.toString(), { redirect: 'follow' });
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          // GAS sometimes returns HTML on error
+          return { success: false, error: 'เซิร์ฟเวอร์ตอบกลับผิดพลาด' };
+        }
+      } catch (err) {
+        return { success: false, error: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' };
+      } finally {
+        delete this._pending[key];
       }
-    } catch (err) {
-      return { success: false, error: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' };
-    }
+    })();
+
+    this._pending[key] = promise;
+    return promise;
   },
 
   async post(action, data = {}) {

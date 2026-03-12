@@ -93,6 +93,9 @@
   <script src="js/auth.js"></script>
 
   <script>
+    // Warm up GAS cold start while user views login page
+    API.get('ping').catch(() => {});
+
     // Check if already logged in
     (async function checkSession() {
       const token = Auth.getToken();

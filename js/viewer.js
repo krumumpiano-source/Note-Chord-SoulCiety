@@ -15,7 +15,9 @@ const Viewer = {
   currentPage: 1,
   totalPages: 0,
   rendering: false,
+  pendingPage: null,  // queued page for rapid navigation
   isImage: false,
+  dpr: window.devicePixelRatio || 1, // cached once
 
   /* Touch state */
   touchStartX: 0,
@@ -137,7 +139,13 @@ const Viewer = {
 
   /* ---------- Render a single page ---------- */
   async renderPage(num) {
-    if (!this.pdfDoc || this.rendering) return;
+    if (!this.pdfDoc) return;
+
+    // If already rendering, queue the page and return
+    if (this.rendering) {
+      this.pendingPage = num;
+      return;
+    }
     this.rendering = true;
 
     try {
@@ -152,21 +160,27 @@ const Viewer = {
       const scale = Math.min(scaleW, scaleH);
       const viewport = page.getViewport({ scale });
 
-      // Sharp rendering on HiDPI
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = viewport.width * dpr;
-      canvas.height = viewport.height * dpr;
+      // Sharp rendering on HiDPI (cached dpr)
+      canvas.width = viewport.width * this.dpr;
+      canvas.height = viewport.height * this.dpr;
       canvas.style.width = viewport.width + 'px';
       canvas.style.height = viewport.height + 'px';
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, viewport.width, viewport.height);
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
       await page.render({ canvasContext: ctx, viewport }).promise;
     } catch (e) {
       console.error('Render error:', e);
     }
+
     this.rendering = false;
+
+    // Process pending page (rapid navigation)
+    if (this.pendingPage !== null) {
+      const next = this.pendingPage;
+      this.pendingPage = null;
+      this.renderPage(next);
+    }
   },
 
   /* ---------- Page navigation ---------- */

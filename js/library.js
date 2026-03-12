@@ -9,6 +9,9 @@ const Library = {
   viewMode: 'grid', // 'grid' | 'list'
   sortMode: 'az',   // 'az' | 'za'
   activeAlpha: null,
+  _alphabetCache: '',    // cached alphabet bar HTML
+  _songsCacheKey: '',    // tracks when songs change
+  _delegated: false,     // event delegation flag
 
   async load() {
     const container = document.getElementById('content-area');
@@ -111,26 +114,27 @@ const Library = {
   },
 
   renderAlphabetBar() {
-    const letters = new Set();
-    this.songs.forEach(s => {
-      const first = s.name.charAt(0).toUpperCase();
-      letters.add(first);
-    });
+    // Cache key: songs count + active alpha (rebuild only when these change)
+    const cacheKey = this.songs.length + '|' + (this.activeAlpha || '');
+    if (this._alphabetCache && this._songsCacheKey === cacheKey) return this._alphabetCache;
 
-    // English A-Z and Thai
+    const letters = new Set();
+    this.songs.forEach(s => letters.add(s.name.charAt(0).toUpperCase()));
+
     const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ'.split('');
 
     let html = '<div class="alphabet-bar">';
     html += `<button class="alpha-btn ${!this.activeAlpha ? 'active' : ''} has-songs" data-alpha="">ทั้งหมด</button>`;
 
     allLetters.forEach(l => {
-      const has = letters.has(l);
-      if (has) {
+      if (letters.has(l)) {
         html += `<button class="alpha-btn ${this.activeAlpha === l ? 'active' : ''} has-songs" data-alpha="${l}">${l}</button>`;
       }
     });
 
     html += '</div>';
+    this._songsCacheKey = cacheKey;
+    this._alphabetCache = html;
     return html;
   },
 
@@ -173,22 +177,29 @@ const Library = {
   },
 
   attachEvents() {
-    // Card / Row click → open viewer
-    document.querySelectorAll('.song-card, .song-row').forEach(el => {
-      el.addEventListener('click', () => {
-        const name = el.dataset.name;
-        const url = el.dataset.url;
-        Viewer.open(name, url, this.filteredSongs);
-      });
-    });
+    // Use event delegation (attach once on content-area)
+    const container = document.getElementById('content-area');
+    if (this._delegated) return;
+    this._delegated = true;
 
-    // Alphabet buttons
-    document.querySelectorAll('.alpha-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.activeAlpha = btn.dataset.alpha || null;
+    container.addEventListener('click', (e) => {
+      // Alphabet button
+      const alphaBtn = e.target.closest('.alpha-btn');
+      if (alphaBtn) {
+        this.activeAlpha = alphaBtn.dataset.alpha || null;
+        this._alphabetCache = ''; // invalidate cache for active state
+        this._songsCacheKey = '';
         this.applyFilters();
         this.render();
-      });
+        return;
+      }
+
+      // Song card / row click (skip if clicking fav button or action button)
+      if (e.target.closest('.song-card-fav, .song-row-fav, .song-row-action-btn')) return;
+      const songEl = e.target.closest('.song-card, .song-row');
+      if (songEl) {
+        Viewer.open(songEl.dataset.name, songEl.dataset.url, this.filteredSongs);
+      }
     });
   },
 
@@ -224,9 +235,7 @@ const Library = {
   },
 
   escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   },
 
   escapeAttr(str) {
