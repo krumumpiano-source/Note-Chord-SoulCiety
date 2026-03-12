@@ -3,17 +3,16 @@
    ============================================ */
 
 const CONFIG = {
-  // ===== GAS Web App URL =====
-  // วิธีได้ URL: Apps Script > Deploy > New deployment > Web app > Copy URL
-  // ใส่ URL ที่ได้จากการ deploy ที่นี่:
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbzpK_h5Ke_NTw6Ksv-SiqrgVbiRXGWTyiV9RGB2ERlwirC4KCIcBp603QRaZ-qZgdbbwA/exec',
+  // ===== API Base URL =====
+  // Empty string = same domain (Vercel)
+  API_BASE_URL: '',
 
   // ===== Admin Email =====
   ADMIN_EMAIL: 'krumum.piano@gmail.com',
 
   // ===== App Info =====
   APP_NAME: 'Note Chord SoulCiety',
-  APP_VERSION: '1.0.0',
+  APP_VERSION: '2.0.0',
 
   // ===== Packages =====
   PACKAGES: {

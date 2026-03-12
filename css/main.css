@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    Note Chord SoulCiety — Main Layout
    Sidebar, Top bar, Grid, Cards, Components
    ============================================ */
@@ -1410,4 +1410,171 @@ a:hover { color: var(--accent-hover); }
     padding: 10px 12px;
     min-width: 60px;
   }
+}
+
+
+/* ===== Admin Tabs ===== */
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border);
+}
+
+.admin-tab {
+  flex: 1;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.admin-tab:hover {
+  color: var(--text-primary);
+}
+
+.admin-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ===== Upload Area ===== */
+.admin-upload-area {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 32px 24px;
+  text-align: center;
+  margin-bottom: 24px;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+
+.admin-upload-area:hover,
+.admin-upload-area.drag-over {
+  border-color: var(--accent);
+  background: var(--bg-secondary);
+}
+
+.admin-upload-area .upload-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.admin-upload-area p {
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.admin-upload-area .upload-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* ===== Upload Progress ===== */
+.upload-progress {
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.upload-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.upload-item:last-child {
+  border-bottom: none;
+}
+
+.upload-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+
+.upload-item-status {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+
+/* ===== Song List (Admin) ===== */
+.admin-song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.admin-song-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.admin-song-item:last-child {
+  border-bottom: none;
+}
+
+.admin-song-item:hover {
+  background: var(--bg-secondary);
+}
+
+.admin-song-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.admin-song-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.admin-song-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.admin-song-del {
+  padding: 4px 8px !important;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.admin-btn-danger {
+  color: #f44336;
+  background: none;
+  border: 1px solid #f4433640;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.admin-btn-danger:hover {
+  background: #f4433620;
 }

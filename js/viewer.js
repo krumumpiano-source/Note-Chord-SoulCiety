@@ -371,8 +371,7 @@ const Viewer = {
 
   /* ---------- Helpers ---------- */
   extractFileId(url) {
-    const m = url.match(/\/file\/d\/([^/]+)/);
-    return m ? m[1] : null;
+    return url || null;
   },
 
   showLoading(show) {
