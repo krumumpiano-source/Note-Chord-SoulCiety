@@ -597,14 +597,7 @@ const Viewer = {
         desc: 'คอร์ดเพลงไทย ครบที่สุด',
         icon: '🎵',
         color: '#f97316',
-        url: 'https://chordtabs.in.th/?s=' + q
-      },
-      {
-        name: 'E-Chords',
-        desc: 'คอร์ด + บทเพลงนานาชาติ',
-        icon: '🎹',
-        color: '#8b5cf6',
-        url: 'https://www.e-chords.com/search-chord/' + q
+        url: 'https://www.google.com/search?q=site:chordtabs.in.th+' + q
       },
       {
         name: 'DoChord',
