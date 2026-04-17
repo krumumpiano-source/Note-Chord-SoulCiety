@@ -253,7 +253,7 @@ var LiveMode = {
             }
             self._tempChannels = [];
 
-            App.toast('&#x1F534; เชื่อมต่อ Live Mode แล้ว!', 'success');
+            Toast.show('🔴 เชื่อมต่อ Live Mode แล้ว!', 'success');
             if (App.currentView === 'livemode') self.renderView();
             resolve(true);
           });
@@ -568,7 +568,7 @@ var LiveMode = {
     this.channelName = '';
     this._hideBanner();
     this._badge(false);
-    App.toast('ตัดการเชื่อมต่อ Live Mode แล้ว', 'info');
+    Toast.show('ตัดการเชื่อมต่อ Live Mode แล้ว', 'info');
     if (App.currentView === 'livemode') this.renderView();
   },
 
