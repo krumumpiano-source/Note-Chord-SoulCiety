@@ -584,19 +584,25 @@ const Viewer = {
     const qThai = encodeURIComponent(songName + ' คอร์ด');
     const qEN = encodeURIComponent(songName + ' chord');
     const qLyrics = encodeURIComponent(songName + ' เนื้อเพลง คอร์ด');
+    const qUG = encodeURIComponent(songName);
 
     panel.innerHTML =
       '<div style="font-size:3rem;">🎸</div>' +
       '<div style="font-size:1rem;color:var(--text-muted);margin:0.5rem 0;">ไม่พบโน้ตในคลัง</div>' +
       '<div style="font-size:1.3rem;font-weight:700;color:var(--text-primary);margin-bottom:1.5rem;word-break:break-word;">' + esc(songName) + '</div>' +
-      '<a href="https://www.google.com/search?q=' + qThai + '" target="_blank" rel="noopener" ' +
-        'style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;padding:14px 28px;border-radius:12px;font-size:1.1rem;font-weight:600;text-decoration:none;margin-bottom:1rem;">' +
-        '🔍 ค้นหาคอร์ด</a>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">' +
-        '<a href="https://www.google.com/search?q=' + qEN + '" target="_blank" rel="noopener" ' +
-          'style="padding:10px 20px;border-radius:8px;background:var(--bg-tertiary);color:var(--text-primary);text-decoration:none;font-size:0.9rem;">Chord (EN)</a>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;">' +
+        '<a href="https://www.google.com/search?q=' + qThai + '" target="_blank" rel="noopener" ' +
+          'style="display:flex;align-items:center;gap:10px;background:var(--accent);color:#fff;padding:14px 20px;border-radius:12px;font-size:1rem;font-weight:600;text-decoration:none;">' +
+          '🔍 ค้นหาคอร์ด (Google)</a>' +
+        '<a href="https://www.mychordbook.com/search?search=' + qUG + '" target="_blank" rel="noopener" ' +
+          'style="display:flex;align-items:center;gap:10px;background:var(--bg-tertiary);color:var(--text-primary);padding:12px 20px;border-radius:12px;font-size:0.95rem;font-weight:600;text-decoration:none;border:1px solid var(--border);">' +
+          '🎵 MyChordBook</a>' +
+        '<a href="https://www.ultimate-guitar.com/search.php?search_type=title&value=' + qUG + '" target="_blank" rel="noopener" ' +
+          'style="display:flex;align-items:center;gap:10px;background:var(--bg-tertiary);color:var(--text-primary);padding:12px 20px;border-radius:12px;font-size:0.95rem;font-weight:600;text-decoration:none;border:1px solid var(--border);">' +
+          '🎸 Ultimate Guitar</a>' +
         '<a href="https://www.google.com/search?q=' + qLyrics + '" target="_blank" rel="noopener" ' +
-          'style="padding:10px 20px;border-radius:8px;background:var(--bg-tertiary);color:var(--text-primary);text-decoration:none;font-size:0.9rem;">เนื้อเพลง+คอร์ด</a>' +
+          'style="display:flex;align-items:center;gap:10px;background:var(--bg-tertiary);color:var(--text-primary);padding:12px 20px;border-radius:12px;font-size:0.95rem;text-decoration:none;border:1px solid var(--border);">' +
+          '📝 เนื้อเพลง + คอร์ด</a>' +
       '</div>';
     panel.style.display = 'flex';
   },
