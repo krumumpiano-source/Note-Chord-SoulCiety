@@ -454,8 +454,9 @@ a:hover { color: var(--accent-hover); }
 }
 
 .alpha-btn {
-  width: 30px;
+  min-width: 30px;
   height: 30px;
+  padding: 0 8px;
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -468,6 +469,7 @@ a:hover { color: var(--accent-hover); }
   justify-content: center;
   font-family: var(--font-sans);
   transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
 .alpha-btn:hover {
