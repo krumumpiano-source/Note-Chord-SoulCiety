@@ -597,7 +597,7 @@ const Viewer = {
         desc: 'คอร์ดเพลงไทย ครบที่สุด',
         icon: '🎵',
         color: '#f97316',
-        url: 'https://www.google.com/search?q=site:chordtabs.in.th+' + q
+        url: 'https://chordtabs.in.th/?s=' + q
       },
       {
         name: 'E-Chords',
@@ -618,7 +618,7 @@ const Viewer = {
         desc: 'แพลตฟอร์มนักดนตรีไทย',
         icon: '🎺',
         color: '#f59e0b',
-        url: 'https://busk.town/dashboard?q=' + q
+        url: 'https://www.google.com/search?q=site:busk.town+' + q
       },
       {
         name: 'Google ค้นหาคอร์ด',
