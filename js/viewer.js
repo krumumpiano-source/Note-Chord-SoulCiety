@@ -607,6 +607,20 @@ const Viewer = {
         url: 'https://www.e-chords.com/search-chord/' + q
       },
       {
+        name: 'DoChord',
+        desc: 'คอร์ดเพลงไทยและสากล',
+        icon: '🎼',
+        color: '#0ea5e9',
+        url: 'https://www.dochord.com/?s=' + q
+      },
+      {
+        name: 'Busk Town',
+        desc: 'แพลตฟอร์มนักดนตรีไทย',
+        icon: '🎺',
+        color: '#f59e0b',
+        url: 'https://busk.town/dashboard?q=' + q
+      },
+      {
         name: 'Google ค้นหาคอร์ด',
         desc: 'ค้นหาจากทุกเว็บไซต์',
         icon: '🔍',
