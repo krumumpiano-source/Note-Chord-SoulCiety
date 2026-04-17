@@ -600,13 +600,6 @@ const Viewer = {
         url: 'https://www.google.com/search?q=site:chordtabs.in.th+' + q
       },
       {
-        name: 'Chordify',
-        desc: 'วิเคราะห์คอร์ดจากเสียงเพลง',
-        icon: '🎼',
-        color: '#10b981',
-        url: 'https://chordify.net/search/' + q
-      },
-      {
         name: 'E-Chords',
         desc: 'คอร์ด + บทเพลงนานาชาติ',
         icon: '🎹',
