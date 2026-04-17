@@ -10,6 +10,9 @@ const Viewer = {
   playlist: [],
   playlistIndex: -1,
 
+  /* Chord window reference */
+  chordWindow: null,
+
   /* PDF.js state */
   pdfDoc: null,
   currentPage: 1,
@@ -26,7 +29,7 @@ const Viewer = {
   touchHandlersAdded: false,
 
   /* ---------- Open viewer ---------- */
-  open(name, url, playlist = []) {
+  open(name, url, playlist = [], skipAutoChord = false) {
     this.currentSong = name;
     this.currentUrl = url;
     this.playlist = playlist || [];
@@ -44,6 +47,9 @@ const Viewer = {
 
     // Load content
     this.loadContent(url);
+
+    // Auto-open chord search (skip in Live Mode)
+    if (!skipAutoChord) this.autoOpenChord(name);
 
     // Record recent
     const token = Auth.getToken();
@@ -65,6 +71,10 @@ const Viewer = {
 
   /* ---------- Load PDF or image ---------- */
   async loadContent(url) {
+    // Hide chord panel if showing
+    const chordPanel = document.getElementById('viewer-chord-panel');
+    if (chordPanel) chordPanel.style.display = 'none';
+
     // Google Drive preview URL — show in iframe directly
     if (url && url.startsWith('https://drive.google.com/')) {
       this.showDrivePreview(url);
@@ -132,12 +142,14 @@ const Viewer = {
   showImage(base64, mime) {
     const canvas = document.getElementById('viewer-canvas');
     canvas.style.display = 'none';
+    const iframe = document.getElementById('viewer-drive-iframe');
+    if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
 
     let img = document.getElementById('viewer-img');
     if (!img) {
       img = document.createElement('img');
       img.id = 'viewer-img';
-      img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);';
+      img.style.cssText = 'width:100%;height:auto;display:block;';
       document.getElementById('viewer-body').appendChild(img);
     }
     img.src = 'data:' + mime + ';base64,' + base64;
@@ -153,6 +165,8 @@ const Viewer = {
   async loadPdf(base64) {
     const img = document.getElementById('viewer-img');
     if (img) img.style.display = 'none';
+    const iframe = document.getElementById('viewer-drive-iframe');
+    if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
 
     const canvas = document.getElementById('viewer-canvas');
     canvas.style.display = 'block';
@@ -192,10 +206,11 @@ const Viewer = {
       const container = document.getElementById('viewer-body');
 
       const unscaled = page.getViewport({ scale: 1 });
-      const scaleW = container.clientWidth / unscaled.width;
-      const scaleH = container.clientHeight / unscaled.height;
-      const scale = Math.min(scaleW, scaleH);
+      const scale = container.clientWidth / unscaled.width;
       const viewport = page.getViewport({ scale });
+
+      // Scroll to top when page changes
+      container.scrollTop = 0;
 
       // Sharp rendering on HiDPI (cached dpr)
       canvas.width = viewport.width * this.dpr;
@@ -250,41 +265,83 @@ const Viewer = {
   setupTouch() {
     const body = document.getElementById('viewer-body');
 
+    // Prevent text/image drag
+    body.addEventListener('dragstart', (e) => e.preventDefault());
+    body.addEventListener('selectstart', (e) => e.preventDefault());
+
+    // --- Swipe left/right to change page ---
+    let swiping = false; // true when horizontal swipe detected mid-gesture
+
     body.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 1) return;
       this.touchStartX = e.changedTouches[0].clientX;
       this.touchStartY = e.changedTouches[0].clientY;
       this.touchStartTime = Date.now();
+      swiping = false;
     }, { passive: true });
 
+    // Detect horizontal swipe during move — prevent scroll if swiping
+    body.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1 || this.totalPages <= 1) return;
+      const dx = e.touches[0].clientX - this.touchStartX;
+      const dy = e.touches[0].clientY - this.touchStartY;
+      // If moved >15px horizontally and direction is mostly horizontal
+      if (!swiping && Math.abs(dx) > 15 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        swiping = true;
+      }
+      if (swiping) {
+        e.preventDefault(); // stop vertical scroll during horizontal swipe
+      }
+    }, { passive: false });
+
     body.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length === 0) return;
       const dx = e.changedTouches[0].clientX - this.touchStartX;
       const dy = e.changedTouches[0].clientY - this.touchStartY;
       const dt = Date.now() - this.touchStartTime;
 
-      // Swipe: min 50px horizontal, mostly horizontal, within 500ms
-      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 500) {
+      // Swipe: min 50px horizontal, mostly horizontal, within 600ms
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3 && dt < 600) {
         if (dx < 0) this.nextPage();
         else this.prevPage();
-        return;
       }
-
-      // Tap: minimal movement, quick
-      if (Math.abs(dx) < 15 && Math.abs(dy) < 15 && dt < 300) {
-        const x = e.changedTouches[0].clientX;
-        const w = window.innerWidth;
-        if (x < w * 0.3) this.prevPage();
-        else if (x > w * 0.7) this.nextPage();
-      }
+      swiping = false;
     }, { passive: true });
 
-    // Desktop click
-    body.addEventListener('click', (e) => {
-      if (e.target.closest('button') || e.target.closest('.viewer-setlist-picker') || e.target.closest('.viewer-page-indicator')) return;
-      const x = e.clientX;
-      const w = window.innerWidth;
-      if (x < w * 0.3) this.prevPage();
-      else if (x > w * 0.7) this.nextPage();
+    // --- Bottom-right corner tap zone ---
+    let tapZone = document.getElementById('viewer-tap-next');
+    if (!tapZone) {
+      tapZone = document.createElement('div');
+      tapZone.id = 'viewer-tap-next';
+      tapZone.className = 'viewer-tap-next';
+      body.appendChild(tapZone);
+    }
+    tapZone.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.nextPage();
     });
+
+    // --- Orientation change: re-render PDF ---
+    this._orientHandler = () => {
+      if (this.pdfDoc && !this.isImage && this.currentPage) {
+        setTimeout(() => this.renderPage(this.currentPage), 200);
+      }
+    };
+    window.addEventListener('orientationchange', this._orientHandler);
+    this._resizeHandler = this._debounceResize();
+    window.addEventListener('resize', this._resizeHandler);
+  },
+
+  _debounceResize() {
+    let timer = null;
+    return () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (this.pdfDoc && !this.isImage && this.currentPage) {
+          this.renderPage(this.currentPage);
+        }
+      }, 300);
+    };
   },
 
   /* ---------- Close viewer ---------- */
@@ -292,6 +349,10 @@ const Viewer = {
     const overlay = document.getElementById('viewer-overlay');
     overlay.classList.remove('open');
     document.body.style.overflow = '';
+
+    // Remove song popup if present
+    const popup = document.getElementById('viewer-song-popup');
+    if (popup) popup.remove();
 
     const canvas = document.getElementById('viewer-canvas');
     if (canvas) {
@@ -304,25 +365,61 @@ const Viewer = {
     const iframe = document.getElementById('viewer-drive-iframe');
     if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
 
+    const chordPanel = document.getElementById('viewer-chord-panel');
+    if (chordPanel) chordPanel.style.display = 'none';
+
     this.clearError();
     this.pdfDoc = null;
     this.currentSong = null;
     this.currentUrl = null;
 
     document.removeEventListener('keydown', this._keyHandler);
+    if (this._orientHandler) {
+      window.removeEventListener('orientationchange', this._orientHandler);
+    }
+    if (this._resizeHandler) {
+      window.removeEventListener('resize', this._resizeHandler);
+    }
   },
 
-  /* ---------- Song navigation (setlist) ---------- */
+  /* ---------- Song navigation (setlist) — with popup ---------- */
   prevSong() {
     if (this.playlistIndex <= 0 || this.playlist.length === 0) return;
-    this.playlistIndex--;
-    this.navigateToSong(this.playlist[this.playlistIndex]);
+    const nextIdx = this.playlistIndex - 1;
+    this._showSongPopup(this.playlist[nextIdx], nextIdx);
   },
 
   nextSong() {
     if (this.playlistIndex >= this.playlist.length - 1 || this.playlist.length === 0) return;
-    this.playlistIndex++;
-    this.navigateToSong(this.playlist[this.playlistIndex]);
+    const nextIdx = this.playlistIndex + 1;
+    this._showSongPopup(this.playlist[nextIdx], nextIdx);
+  },
+
+  _showSongPopup(song, idx) {
+    // Remove existing popup
+    const old = document.getElementById('viewer-song-popup');
+    if (old) old.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'viewer-song-popup';
+    popup.className = 'viewer-song-popup';
+
+    const direction = idx > this.playlistIndex ? 'เพลงถัดไป ▸' : '◂ เพลงก่อนหน้า';
+    popup.innerHTML =
+      '<div class="viewer-song-popup-label">' + direction + '</div>' +
+      '<div class="viewer-song-popup-name">' + Library.escapeHtml(song.name) + '</div>' +
+      '<div class="viewer-song-popup-hint">แตะเพื่อเปิดคอร์ด</div>';
+
+    popup.addEventListener('click', () => {
+      popup.remove();
+      this.playlistIndex = idx;
+      this.navigateToSong(song);
+    });
+
+    document.getElementById('viewer-overlay').appendChild(popup);
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => { if (popup.parentNode) popup.remove(); }, 5000);
   },
 
   navigateToSong(song) {
@@ -334,6 +431,9 @@ const Viewer = {
     this.loadContent(song.url);
     this.updateFavButton();
     this.updateNavButtons();
+
+    // Auto-open chord for new song (closes old tab)
+    this.autoOpenChord(song.name);
 
     const token = Auth.getToken();
     if (token) {
@@ -407,6 +507,98 @@ const Viewer = {
     }
 
     picker.classList.add('open');
+  },
+
+  /* ---------- Auto-open chord in new tab ---------- */
+  autoOpenChord(songName) {
+    const name = songName || this.currentSong;
+    if (!name) return;
+    // Close previous chord tab if still open
+    if (this.chordWindow && !this.chordWindow.closed) {
+      this.chordWindow.close();
+    }
+    const q = encodeURIComponent(name + ' คอร์ด');
+    this.chordWindow = window.open('https://www.google.com/search?q=' + q, 'ncs_chord');
+  },
+
+  /* ---------- Search chords on Google ---------- */
+  searchChord(songName) {
+    this.autoOpenChord(songName);
+  },
+
+  /* ---------- Open chord search panel (when no sheet music found) ---------- */
+  openChordSearch(songName) {
+    this.currentSong = songName;
+    this.currentUrl = null;
+
+    const overlay = document.getElementById('viewer-overlay');
+    document.getElementById('viewer-title').textContent = songName;
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    // Hide all content views
+    document.getElementById('viewer-canvas').style.display = 'none';
+    const img = document.getElementById('viewer-img');
+    if (img) img.style.display = 'none';
+    const iframe = document.getElementById('viewer-drive-iframe');
+    if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
+    this.clearError();
+
+    // Show chord panel with loading, then populate with links
+    let panel = document.getElementById('viewer-chord-panel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'viewer-chord-panel';
+      document.getElementById('viewer-body').appendChild(panel);
+    }
+    panel.style.display = 'none';
+    this.showLoading(true);
+
+    // Update toolbar
+    this.updateFavButton();
+    const prevBtn = document.getElementById('viewer-prev');
+    const nextBtn = document.getElementById('viewer-next');
+    if (prevBtn) prevBtn.style.display = 'none';
+    if (nextBtn) nextBtn.style.display = 'none';
+    document.getElementById('viewer-page-indicator').style.display = 'none';
+
+    // Keyboard
+    this._keyHandler = this.handleKey.bind(this);
+    document.addEventListener('keydown', this._keyHandler);
+
+    // Show chord search panel immediately (Google links)
+    this.showLoading(false);
+    this._showChordPanel(songName);
+  },
+
+  /* ---------- Show chord search panel (Google links — safe & legal) ---------- */
+  _showChordPanel(songName) {
+    let panel = document.getElementById('viewer-chord-panel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'viewer-chord-panel';
+      document.getElementById('viewer-body').appendChild(panel);
+    }
+
+    const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const qThai = encodeURIComponent(songName + ' คอร์ด');
+    const qEN = encodeURIComponent(songName + ' chord');
+    const qLyrics = encodeURIComponent(songName + ' เนื้อเพลง คอร์ด');
+
+    panel.innerHTML =
+      '<div style="font-size:3rem;">🎸</div>' +
+      '<div style="font-size:1rem;color:var(--text-muted);margin:0.5rem 0;">ไม่พบโน้ตในคลัง</div>' +
+      '<div style="font-size:1.3rem;font-weight:700;color:var(--text-primary);margin-bottom:1.5rem;word-break:break-word;">' + esc(songName) + '</div>' +
+      '<a href="https://www.google.com/search?q=' + qThai + '" target="_blank" rel="noopener" ' +
+        'style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;padding:14px 28px;border-radius:12px;font-size:1.1rem;font-weight:600;text-decoration:none;margin-bottom:1rem;">' +
+        '🔍 ค้นหาคอร์ด</a>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">' +
+        '<a href="https://www.google.com/search?q=' + qEN + '" target="_blank" rel="noopener" ' +
+          'style="padding:10px 20px;border-radius:8px;background:var(--bg-tertiary);color:var(--text-primary);text-decoration:none;font-size:0.9rem;">Chord (EN)</a>' +
+        '<a href="https://www.google.com/search?q=' + qLyrics + '" target="_blank" rel="noopener" ' +
+          'style="padding:10px 20px;border-radius:8px;background:var(--bg-tertiary);color:var(--text-primary);text-decoration:none;font-size:0.9rem;">เนื้อเพลง+คอร์ด</a>' +
+      '</div>';
+    panel.style.display = 'flex';
   },
 
   /* ---------- Helpers ---------- */

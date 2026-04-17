@@ -483,7 +483,7 @@ var LiveMode = {
 
       if (bestMatch) {
         self._matchStatus('&#x2705; เจอโน้ต: ' + bestMatch.name, '#4caf50');
-        Viewer.open(bestMatch.name, bestMatch.url, []);
+        Viewer.open(bestMatch.name, bestMatch.url, [], true);
       } else {
         self._matchStatus('&#x1F3B8; ไม่พบโน้ต — ค้นหาคอร์ดแทน: ' + songName, '#ff9800');
         Viewer.openChordSearch(songName);
