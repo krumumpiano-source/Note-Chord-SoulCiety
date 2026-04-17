@@ -1,519 +1,666 @@
-/* ============================================
-   Note Chord SoulCiety — Live Mode
-   Auto-open sheet music synced with BandThai Live
+﻿/* ============================================
+   Note Chord SoulCiety - Live Mode
+   Auto-connect to BandThai Live broadcast
    ============================================ */
 
-const LiveMode = {
+var LiveMode = {
   active: false,
   channel: null,
   sb: null,
   bandId: '',
-  date: '',
-  timeSlot: '',
+  channelName: '',
   playlist: [],
   currentIdx: -1,
+  _currentSongName: null,
   joinedAt: 0,
-  pendingSong: null,       // { idx, name } waiting for user confirmation
-  verifiedEmail: false,    // whether email was verified against BandThai
+  pendingSong: null,
+  _connectId: 0,
+  _tempChannels: [],
+  viewMode: localStorage.getItem('ncs-live-viewMode') || 'notes', // 'notes' or 'chords'
 
-  /* ---------- Render connection UI ---------- */
-  renderView() {
+  /* ========== renderView ========== */
+  renderView: function() {
     document.getElementById('topbar-title').textContent = 'Live Mode';
-    const area = document.getElementById('content-area');
+    var area = document.getElementById('content-area');
 
+    // already connected
     if (this.active) {
-      area.innerHTML = this.renderActiveView();
+      area.innerHTML = this._activeHTML();
       return;
     }
 
-    // Restore saved settings
-    const savedBandId = localStorage.getItem('ncs-live-bandId') || '';
-    const today = new Date().toISOString().slice(0, 10);
-
-    area.innerHTML = `
-      <div style="max-width:480px;margin:2rem auto;padding:1.5rem;">
-        <h2 style="margin-bottom:0.5rem;color:var(--text-primary);">🎸 Live Mode</h2>
-        <p style="color:var(--text-muted);margin-bottom:1.5rem;font-size:0.9rem;">
-          เชื่อมต่อกับ BandThai Live Mode เพื่อเปิดโน้ตอัตโนมัติตามเพลงที่กำลังเล่น
-        </p>
-
-        <div style="margin-bottom:1rem;">
-          <label style="display:block;margin-bottom:0.3rem;color:var(--text-secondary);font-size:0.9rem;">Band ID</label>
-          <input type="text" id="live-band-id" value="${this.escapeAttr(savedBandId)}"
-            placeholder="เช่น abc123"
-            style="width:100%;padding:0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;box-sizing:border-box;" />
-          <p style="color:var(--text-muted);font-size:0.75rem;margin-top:4px;">ดู Band ID ได้ที่ BandThai → ตั้งค่าวง</p>
-        </div>
-
-        <div style="margin-bottom:1rem;">
-          <label style="display:block;margin-bottom:0.3rem;color:var(--text-secondary);font-size:0.9rem;">วันที่</label>
-          <input type="date" id="live-date" value="${today}"
-            style="width:100%;padding:0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;box-sizing:border-box;" />
-        </div>
-
-        <div style="margin-bottom:1.5rem;">
-          <label style="display:block;margin-bottom:0.3rem;color:var(--text-secondary);font-size:0.9rem;">Time Slot (ถ้ามี)</label>
-          <input type="text" id="live-timeslot" value=""
-            placeholder="เช่น 20:00 (เว้นว่างได้)"
-            style="width:100%;padding:0.7rem;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:1rem;box-sizing:border-box;" />
-        </div>
-
-        <button class="btn btn-primary" onclick="LiveMode.connect()" style="width:100%;padding:0.8rem;font-size:1rem;">
-          🔴 เชื่อมต่อ Live Mode
-        </button>
-      </div>
-    `;
-  },
-
-  /* ---------- Active view ---------- */
-  renderActiveView() {
-    const songName = this.playlist[this.currentIdx]?.name || '—';
-    let html = `
-      <div style="max-width:600px;margin:1rem auto;padding:1rem;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;">
-          <span style="font-size:1.5rem;">🔴</span>
-          <div>
-            <div style="font-weight:600;color:var(--text-primary);">Live Mode — กำลังเชื่อมต่อ</div>
-            <div style="font-size:0.8rem;color:var(--text-muted);" id="live-channel-name">${this.escapeHtml(this.getChannelName())}</div>
-          </div>
-          <button class="btn" onclick="LiveMode.disconnect()" style="margin-left:auto;background:var(--bg-tertiary);color:#f44336;border:1px solid #f44336;padding:6px 16px;border-radius:8px;">
-            ✕ ตัดการเชื่อมต่อ
-          </button>
-        </div>
-
-        <div style="background:var(--bg-secondary);border-radius:12px;padding:1.2rem;margin-bottom:1rem;border:2px solid var(--accent);">
-          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">🎵 กำลังเล่น</div>
-          <div style="font-size:1.3rem;font-weight:700;color:var(--accent);" id="live-now-playing">${this.escapeHtml(songName)}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;" id="live-match-status"></div>
-        </div>
-    `;
-
-    // Show pending song notification in the active view
-    if (this.pendingSong) {
-      html += `
-        <div style="background:linear-gradient(135deg,#1a237e,#283593);border-radius:12px;padding:1rem;margin-bottom:1rem;color:#fff;display:flex;align-items:center;gap:12px;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:0.8rem;opacity:0.8;">⏭ เพลงถัดไปรอยืนยัน</div>
-            <div style="font-size:1.1rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(this.pendingSong.name)}</div>
-          </div>
-          <button onclick="LiveMode.confirmSongChange()" style="background:#4caf50;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:600;cursor:pointer;">✅ เปลี่ยน</button>
-          <button onclick="LiveMode.dismissSongChange()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 12px;border-radius:8px;cursor:pointer;">✕</button>
-        </div>
-      `;
-    }
-
-    html += `
-        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">Playlist (${this.playlist.length} เพลง)</div>
-        <div id="live-playlist-list" style="display:flex;flex-direction:column;gap:4px;">
-    `;
-
-    this.playlist.forEach((s, i) => {
-      const isCurrent = i === this.currentIdx;
-      const skipped = s._skipped ? 'opacity:0.4;text-decoration:line-through;' : '';
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;${isCurrent ? 'background:var(--accent);color:#fff;font-weight:600;' : 'background:var(--bg-secondary);color:var(--text-primary);'}${skipped}">
-        <span style="font-size:0.75rem;min-width:24px;text-align:center;${isCurrent ? 'color:#fff;' : 'color:var(--text-muted);'}">${i + 1}</span>
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(s.name)}</span>
-        ${s._key ? `<span style="font-size:0.75rem;${isCurrent ? 'color:rgba(255,255,255,0.8);' : 'color:var(--text-muted);'}">${this.escapeHtml(s._key || s.key)}</span>` : ''}
-      </div>`;
-    });
-
-    html += '</div></div>';
-    return html;
-  },
-
-  /* ---------- Connect to BandThai Broadcast ---------- */
-  async connect() {
-    const bandId = (document.getElementById('live-band-id')?.value || '').trim();
-    const date = (document.getElementById('live-date')?.value || '').trim();
-    const timeSlot = (document.getElementById('live-timeslot')?.value || '').trim();
-
-    if (!bandId) { App.toast('กรุณาใส่ Band ID', 'error'); return; }
-    if (!date) { App.toast('กรุณาเลือกวันที่', 'error'); return; }
-
-    // Check NCS login
-    const ncsUser = Auth.getUser();
-    if (!ncsUser || !ncsUser.email) {
-      App.toast('กรุณาล็อคอินก่อนใช้ Live Mode', 'error');
+    // not logged in
+    var user = Auth.getUser();
+    if (!user || !user.email) {
+      area.innerHTML = '<div style="max-width:480px;margin:3rem auto;padding:1.5rem;text-align:center;">' +
+        '<h2 style="color:var(--text-primary);">&#127928; Live Mode</h2>' +
+        '<p style="color:#e65100;margin-top:1rem;">&#x26A0; กรุณาล็อคอินก่อนใช้ Live Mode</p></div>';
       return;
     }
 
-    this.bandId = bandId;
-    this.date = date;
-    this.timeSlot = timeSlot;
+    // show searching UI
+    area.innerHTML = '<div style="max-width:480px;margin:3rem auto;padding:1.5rem;text-align:center;">' +
+      '<h2 style="color:var(--text-primary);">&#127928; Live Mode</h2>' +
+      '<div class="loading-spinner" style="margin:2rem auto;"></div>' +
+      '<div id="live-status" style="font-size:0.9rem;color:var(--text-muted);margin-top:1rem;">กำลังค้นหา Live session...</div>' +
+      '</div>';
+
+    // start auto-connect (cancel previous if any)
+    this._autoConnect();
+  },
+
+  /* ========== auto connect ========== */
+  _autoConnect: function() {
+    var self = this;
+    this._connectId++;
+    var myId = this._connectId;
+    this._cleanup();
     this.joinedAt = Date.now();
+    this._debugLog = [];
+    this._dbg('Start auto-connect #' + myId);
 
-    localStorage.setItem('ncs-live-bandId', bandId);
-
-    // Init Supabase client (read-only, anon key only)
+    this._initSB();
     if (!this.sb) {
-      if (typeof window.supabase === 'undefined') {
-        App.toast('Supabase SDK ยังไม่โหลด', 'error');
-        return;
-      }
-      this.sb = window.supabase.createClient(
-        'https://wsorngsyowgxikiepice.supabase.co',
-        'sb_publishable_k2zvxeE9SJEEJkw3SVolqg_pkgZQPnm'
-      );
+      this._showResult('&#x26A0; Supabase SDK ยังไม่โหลด กรุณา refresh หน้า');
+      return;
     }
+    this._dbg('Supabase OK');
 
-    // Verify email against BandThai band members
-    App.toast('กำลังตรวจสอบสิทธิ์...', 'info');
-    const verified = await this.verifyBandMember(ncsUser.email, bandId);
-    if (!verified) {
-      // Allow connection with warning (RLS may block all verification queries)
-      console.warn('[LiveMode] Email verification inconclusive for:', ncsUser.email);
-      App.toast('⚠️ ไม่สามารถตรวจสอบอีเมลได้ แต่เชื่อมต่อให้ก่อน', 'warning');
+    // Step 1: try cached band_id
+    var cached = localStorage.getItem('ncs-live-bandId');
+    this._dbg('Cached bandId: ' + (cached || 'NONE'));
+    if (cached) {
+      this._setStatus('กำลังค้นหา Live session...');
+      this._scanForBand(cached, myId).then(function(ok) {
+        if (myId !== self._connectId) return;
+        if (ok) return;
+        // cached band not found — try full discovery as fallback
+        console.log('[LiveMode] Cached band not found, trying full discovery...');
+        self._discover(myId);
+      }).catch(function(e) {
+        console.error('[LiveMode] scanForBand error:', e);
+        if (myId !== self._connectId) return;
+        self._discover(myId);
+      });
     } else {
-      this.verifiedEmail = true;
+      this._discover(myId);
     }
-
-    this.initChannel();
   },
 
-  /* ---------- Verify email is a BandThai band member ---------- */
-  async verifyBandMember(email, bandId) {
-    const emailLower = email.toLowerCase().trim();
+  /* ========== discover from guest tokens ========== */
+  _discover: function(myId) {
+    var self = this;
+    this._setStatus('กำลังค้นหา Live session จาก BandThai...');
 
-    // Method 1: Try get_band_profiles RPC (SECURITY DEFINER — works with anon key)
-    try {
-      const { data, error } = await this.sb.rpc('get_band_profiles', { p_band_id: bandId });
-      if (!error && data && Array.isArray(data)) {
-        return data.some(m => m.email && m.email.toLowerCase().trim() === emailLower);
-      }
-    } catch (e) { /* fallback below */ }
-
-    // Method 2: Try band_members table
-    try {
-      const { data, error } = await this.sb.from('band_members').select('email').eq('band_id', bandId);
-      if (!error && data && Array.isArray(data)) {
-        return data.some(m => m.email && m.email.toLowerCase().trim() === emailLower);
-      }
-    } catch (e) { /* fallback below */ }
-
-    // Method 3: Try profiles table directly
-    try {
-      const { data, error } = await this.sb.from('profiles')
-        .select('id')
-        .eq('email', emailLower)
-        .eq('band_id', bandId)
-        .limit(1);
-      if (!error && data && data.length > 0) return true;
-    } catch (e) { /* all methods failed */ }
-
-    return false;
+    this._discoverTokens(myId).then(function(ok) {
+      if (myId !== self._connectId) return;
+      if (ok) return;
+      self._showResult('ไม่พบ Live session ที่เปิดอยู่<br><span style="font-size:0.85rem;">เปิด BandThai Live แล้วกลับมาที่หน้านี้</span>',
+        '<button class="btn btn-primary" onclick="LiveMode.renderView()" style="margin-top:1.5rem;padding:10px 32px;">&#x1F504; ลองใหม่</button>' +
+        '<div id="live-debug" style="margin-top:1.5rem;text-align:left;font-size:0.75rem;color:var(--text-muted);background:var(--bg-secondary);padding:12px;border-radius:8px;max-height:200px;overflow:auto;font-family:monospace;">' +
+          (self._debugLog || []).join('<br>') + '</div>');
+    }).catch(function() {
+      if (myId !== self._connectId) return;
+      self._showResult('เกิดข้อผิดพลาด กรุณาลองใหม่',
+        '<button class="btn btn-primary" onclick="LiveMode.renderView()" style="margin-top:1rem;padding:10px 32px;">&#x1F504; ลองใหม่</button>');
+    });
   },
 
-  getChannelName() {
-    let name = 'live-' + this.bandId + '-' + this.date;
-    if (this.timeSlot) name += '-' + this.timeSlot.replace(/:/g, '');
-    return name;
-  },
-
-  initChannel() {
-    if (this.channel) {
-      this.channel.unsubscribe();
-      this.channel = null;
-    }
-
-    const channelName = this.getChannelName();
-    this.channel = this.sb.channel(channelName, { config: { broadcast: { self: false } } });
-
-    this.channel
-      .on('broadcast', { event: 'song_ending' }, (payload) => {
-        const d = payload.payload || {};
-        if (typeof d.next === 'number' && d.next >= 0 && d.next < this.playlist.length) {
-          this.onSongChanged(d.next);
-        } else if (typeof d.from === 'number') {
-          // Auto-advance: find next non-skipped
-          let next = d.from + 1;
-          while (next < this.playlist.length && this.playlist[next]._skipped) next++;
-          if (next < this.playlist.length) this.onSongChanged(next);
+  /* ========== query live_guest_tokens (public) ========== */
+  _discoverTokens: function(myId) {
+    var self = this;
+    var now = new Date().toISOString();
+    return this.sb.from('live_guest_tokens')
+      .select('band_id, date, venue, time_slot')
+      .gt('expires_at', now)
+      .then(function(resp) {
+        if (myId !== self._connectId) return false;
+        if (resp.error) {
+          self._dbg('guest_tokens ERROR: ' + JSON.stringify(resp.error));
+          console.log('[LiveMode] No active guest tokens, error:', resp.error);
+          return false;
         }
-      })
-      .on('broadcast', { event: 'current_changed' }, (payload) => {
-        const d = payload.payload || {};
-        if (typeof d.idx === 'number' && d.idx >= 0 && d.idx < this.playlist.length) {
-          this.onSongChanged(d.idx);
+        if (!resp.data || resp.data.length === 0) {
+          self._dbg('guest_tokens: 0 results');
+          console.log('[LiveMode] No active guest tokens');
+          return false;
         }
-      })
-      .on('broadcast', { event: 'state_sync' }, (payload) => {
-        const d = payload.payload || {};
-        if (d.playlist && Array.isArray(d.playlist)) {
-          this.playlist = d.playlist;
-          if (typeof d.current === 'number') {
-            this.onSongChanged(d.current);
-          }
-          this.updateActiveView();
+        self._dbg('guest_tokens: ' + resp.data.length + ' found');
+        console.log('[LiveMode] Found', resp.data.length, 'active guest tokens');
+        var map = {};
+        for (var i = 0; i < resp.data.length; i++) {
+          var t = resp.data[i];
+          var venueStr = t.venue ? self._sanitizeCh(t.venue) : '';
+          var ts = t.time_slot ? t.time_slot.replace(/[^0-9]/g, '') : '';
+          var ch = 'live-' + t.band_id + '-' + t.date
+            + (venueStr ? '-' + venueStr : '')
+            + (ts ? '-' + ts : '');
+          map[ch] = t.band_id;
         }
-      })
-      .on('broadcast', { event: 'request_song' }, (payload) => {
-        const d = payload.payload || {};
-        if (d.song) {
-          const insertAt = (typeof d.insertAfter === 'number') ? d.insertAfter + 1 : this.playlist.length;
-          this.playlist.splice(insertAt, 0, d.song);
-          this.updateActiveView();
-        }
-      })
-      .on('broadcast', { event: 'skip_song' }, (payload) => {
-        const d = payload.payload || {};
-        if (typeof d.idx === 'number' && this.playlist[d.idx]) {
-          this.playlist[d.idx]._skipped = true;
-          this.updateActiveView();
-        }
-      })
-      .on('broadcast', { event: 'unskip_song' }, (payload) => {
-        const d = payload.payload || {};
-        if (typeof d.idx === 'number' && this.playlist[d.idx]) {
-          this.playlist[d.idx]._skipped = false;
-          this.updateActiveView();
-        }
-      })
-      .on('broadcast', { event: 'reorder' }, (payload) => {
-        const d = payload.payload || {};
-        if (typeof d.from === 'number' && typeof d.to === 'number') {
-          const [item] = this.playlist.splice(d.from, 1);
-          this.playlist.splice(d.to, 0, item);
-          // Adjust currentIdx
-          if (this.currentIdx === d.from) this.currentIdx = d.to;
-          else if (d.from < this.currentIdx && d.to >= this.currentIdx) this.currentIdx--;
-          else if (d.from > this.currentIdx && d.to <= this.currentIdx) this.currentIdx++;
-          this.updateActiveView();
-        }
-      })
-      .on('broadcast', { event: 'remove' }, (payload) => {
-        const d = payload.payload || {};
-        if (typeof d.idx === 'number' && d.idx < this.playlist.length) {
-          this.playlist.splice(d.idx, 1);
-          if (this.currentIdx >= this.playlist.length) this.currentIdx = Math.max(0, this.playlist.length - 1);
-          this.updateActiveView();
-        }
-      })
-      .on('broadcast', { event: 'transpose' }, (payload) => {
-        const d = payload.payload || {};
-        if (typeof d.idx === 'number' && this.playlist[d.idx] && d.key) {
-          this.playlist[d.idx]._key = d.key;
-          this.updateActiveView();
-        }
-      })
-      .subscribe((status) => {
-        console.log('[LiveMode] Channel status:', status);
-        if (status === 'SUBSCRIBED') {
-          this.active = true;
-          App.toast('🔴 เชื่อมต่อ Live Mode แล้ว! รอรับเพลงจาก BandThai...', 'success');
-          this.updateSidebarIndicator(true);
-          // Request current state from BandThai
-          this.channel.send({ type: 'broadcast', event: 'request_state', payload: { joinedAt: this.joinedAt } });
-          // Pre-load Library.songs in background
-          if (!Library.songs || Library.songs.length === 0) {
-            API.listSongs().then(res => {
-              if (res.success && res.data && res.data.songs) {
-                Library.songs = res.data.songs;
-                localStorage.setItem('ncs-songs-cache', JSON.stringify(Library.songs));
-                localStorage.setItem('ncs-songs-cache-time', Date.now().toString());
-                console.log('[LiveMode] Pre-loaded', Library.songs.length, 'songs');
-              }
-            }).catch(() => {});
-          }
-          if (App.currentView === 'livemode') this.renderView();
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          App.toast('เชื่อมต่อ Live Mode ไม่ได้', 'error');
-          this.active = false;
-          this.updateSidebarIndicator(false);
-        }
+        self._setStatus('พบ ' + Object.keys(map).length + ' session กำลังตรวจสอบ...');
+        return self._scanChannels(map, myId);
       });
   },
 
-  /* ---------- Song changed handler ---------- */
-  onSongChanged(idx) {
-    const song = this.playlist[idx];
-    if (!song) return;
+  /* ========== scan for specific band ========== */
+  _scanForBand: function(bandId, myId) {
+    var self = this;
+    var map = {};
 
-    console.log('[LiveMode] Song changed to idx:', idx, 'name:', song.name);
-
-    // If this is the very first song (no current yet), open immediately
-    if (this.currentIdx === -1) {
-      this.currentIdx = idx;
-      const nowEl = document.getElementById('live-now-playing');
-      if (nowEl) nowEl.textContent = song.name;
-      this.openMatchingSong(song.name);
-      this.updateActiveView();
-      return;
-    }
-
-    // Store as pending — user must confirm before switching
-    this.pendingSong = { idx, name: song.name };
-    this.showSongConfirmation(song.name);
-    this.updateActiveView();
-  },
-
-  /* ---------- Show confirmation banner ---------- */
-  showSongConfirmation(songName) {
-    // Remove existing banner if any
-    this.hideSongConfirmation();
-
-    const banner = document.createElement('div');
-    banner.id = 'live-song-confirm';
-    banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:10000;background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.3);animation:slideUpBanner 0.3s ease;';
-    banner.innerHTML = `
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:0.8rem;opacity:0.8;">⏭ เพลงถัดไป</div>
-        <div style="font-size:1.1rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(songName)}</div>
-      </div>
-      <button onclick="LiveMode.confirmSongChange()" style="background:#4caf50;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;white-space:nowrap;">
-        ✅ เปลี่ยนเพลง
-      </button>
-      <button onclick="LiveMode.dismissSongChange()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:10px 16px;border-radius:8px;font-size:0.95rem;cursor:pointer;white-space:nowrap;">
-        ✕
-      </button>
-    `;
-    document.body.appendChild(banner);
-  },
-
-  /* ---------- User confirms song change ---------- */
-  confirmSongChange() {
-    if (!this.pendingSong) return;
-    const { idx, name } = this.pendingSong;
-    this.currentIdx = idx;
-    this.pendingSong = null;
-    this.hideSongConfirmation();
-
-    const nowEl = document.getElementById('live-now-playing');
-    if (nowEl) nowEl.textContent = name;
-
-    this.openMatchingSong(name); // async, fire-and-forget is fine
-    this.updateActiveView();
-  },
-
-  /* ---------- User dismisses (stays on current sheet) ---------- */
-  dismissSongChange() {
-    this.pendingSong = null;
-    this.hideSongConfirmation();
-  },
-
-  /* ---------- Remove confirmation banner ---------- */
-  hideSongConfirmation() {
-    const existing = document.getElementById('live-song-confirm');
-    if (existing) existing.remove();
-  },
-
-  /* ---------- Match & open sheet music ---------- */
-  async openMatchingSong(songName) {
-    if (!songName) return;
-
-    // Ensure Library.songs is loaded
-    if (!Library.songs || Library.songs.length === 0) {
-      console.log('[LiveMode] Library.songs empty, loading...');
-      // Try cache first
-      const cached = localStorage.getItem('ncs-songs-cache');
-      if (cached) {
-        try { Library.songs = JSON.parse(cached); } catch (e) { /* ignore */ }
-      }
-      // If still empty, fetch from server
-      if (!Library.songs || Library.songs.length === 0) {
-        try {
-          const res = await API.listSongs();
-          if (res.success && res.data && res.data.songs) {
-            Library.songs = res.data.songs;
-            localStorage.setItem('ncs-songs-cache', JSON.stringify(Library.songs));
-            localStorage.setItem('ncs-songs-cache-time', Date.now().toString());
+    // try guest tokens for this band
+    var now = new Date().toISOString();
+    return this.sb.from('live_guest_tokens')
+      .select('date, venue, time_slot')
+      .eq('band_id', bandId)
+      .gt('expires_at', now)
+      .then(function(resp) {
+        if (myId !== self._connectId) return false;
+        if (resp.error) {
+          self._dbg('band tokens ERROR: ' + JSON.stringify(resp.error));
+          console.warn('[LiveMode] guest_tokens query error:', resp.error);
+        }
+        if (!resp.error && resp.data && resp.data.length > 0) {
+          self._dbg('band tokens: ' + resp.data.length + ' found');
+          // Got exact tokens — use these plus today common slots
+          for (var i = 0; i < resp.data.length; i++) {
+            var t = resp.data[i];
+            var venueStr = t.venue ? self._sanitizeCh(t.venue) : '';
+            var ts = t.time_slot ? t.time_slot.replace(/[^0-9]/g, '') : '';
+            map['live-' + bandId + '-' + t.date
+              + (venueStr ? '-' + venueStr : '')
+              + (ts ? '-' + ts : '')] = bandId;
           }
-        } catch (e) { console.error('[LiveMode] Failed to load songs:', e); }
-      }
-      console.log('[LiveMode] Library loaded:', Library.songs.length, 'songs');
-    }
+        }
+        // Always add today's common slots as fallback (no-venue, digits-only timeSlot)
+        var today = new Date().toISOString().slice(0, 10);
+        var slots = ['', '19002200', '19002300', '20002300', '20002400', '20000100'];
+        for (var j = 0; j < slots.length; j++) {
+          var ch = 'live-' + bandId + '-' + today + (slots[j] ? '-' + slots[j] : '');
+          if (!map[ch]) map[ch] = bandId;
+        }
+        console.log('[LiveMode] Scanning', Object.keys(map).length, 'channels for band', bandId);
+        self._dbg('Scanning ' + Object.keys(map).length + ' channels');
+        self._dbg('Channels: ' + Object.keys(map).slice(0, 3).join(', ') + (Object.keys(map).length > 3 ? '...' : ''));
+        return self._scanChannels(map, myId);
+      });
+  },
 
-    if (Library.songs.length === 0) {
-      const statusEl = document.getElementById('live-match-status');
-      if (statusEl) {
-        statusEl.textContent = '⚠️ ไม่มีเพลงในระบบ';
-        statusEl.style.color = '#f44336';
+  /* ========== subscribe to channels, first state_sync wins ========== */
+  _scanChannels: function(map, myId) {
+    var self = this;
+    var keys = Object.keys(map);
+    if (keys.length === 0) return Promise.resolve(false);
+
+    return new Promise(function(resolve) {
+      var done = false;
+      var secs = 5;
+
+      // Countdown display
+      var countdownTimer = setInterval(function() {
+        if (done) { clearInterval(countdownTimer); return; }
+        secs--;
+        if (secs > 0) self._setStatus('กำลังค้นหา Live session... (' + secs + ')');
+      }, 1000);
+
+      var timer = setTimeout(function() {
+        if (done || myId !== self._connectId) return;
+        done = true;
+        clearInterval(countdownTimer);
+        self._dbg('Scan timeout (' + keys.length + ' ch)');
+        console.log('[LiveMode] Channel scan timeout (' + keys.length + ' channels)');
+        self._cleanup();
+        resolve(false);
+      }, 5000);
+
+      for (var i = 0; i < keys.length; i++) {
+        (function(chName) {
+          var bandId = map[chName];
+          var ch = self.sb.channel(chName, { config: { broadcast: { self: false } } });
+          self._tempChannels.push(ch);
+
+          ch.on('broadcast', { event: 'state_sync' }, function(payload) {
+            if (done || myId !== self._connectId) return;
+            done = true;
+            clearTimeout(timer);
+            clearInterval(countdownTimer);
+            console.log('[LiveMode] state_sync from:', chName);
+
+            self.bandId = bandId;
+            self.channelName = chName;
+            self.channel = ch;
+            localStorage.setItem('ncs-live-bandId', bandId);
+
+            var p = payload.payload || {};
+            if (p.playlist && Array.isArray(p.playlist)) {
+              self.playlist = p.playlist;
+              if (typeof p.current === 'number') {
+                self.currentIdx = -1;
+                self._songChanged(p.current);
+              }
+            }
+
+            self._listen(ch);
+            self.active = true;
+            self._badge(true);
+            self._loadSongs();
+
+            // cleanup other channels (keep this one)
+            var keep = ch;
+            for (var x = 0; x < self._tempChannels.length; x++) {
+              if (self._tempChannels[x] !== keep) {
+                try { self._tempChannels[x].unsubscribe(); } catch(e) {}
+              }
+            }
+            self._tempChannels = [];
+
+            App.toast('&#x1F534; เชื่อมต่อ Live Mode แล้ว!', 'success');
+            if (App.currentView === 'livemode') self.renderView();
+            resolve(true);
+          });
+
+          ch.subscribe(function(status) {
+            self._dbg('ch ' + chName.slice(-15) + ' -> ' + status);
+            if (status === 'SUBSCRIBED' && !done && myId === self._connectId) {
+              ch.send({ type: 'broadcast', event: 'request_state', payload: { joinedAt: self.joinedAt } });
+            }
+          });
+        })(keys[i]);
       }
+    });
+  },
+
+  /* ========== event listeners ========== */
+  _listen: function(ch) {
+    var self = this;
+
+    // เพลงปัจจุบันเปลี่ยน → แสดง banner
+    ch.on('broadcast', { event: 'song_ending' }, function(payload) {
+      var d = payload.payload || {};
+      if (typeof d.next === 'number' && d.next >= 0 && d.next < self.playlist.length) {
+        self._songChanged(d.next);
+      } else if (typeof d.from === 'number') {
+        var n = d.from + 1;
+        while (n < self.playlist.length && self.playlist[n]._skipped) n++;
+        if (n < self.playlist.length) self._songChanged(n);
+      }
+    });
+
+    ch.on('broadcast', { event: 'current_changed' }, function(payload) {
+      var d = payload.payload || {};
+      if (typeof d.idx === 'number' && d.idx >= 0 && d.idx < self.playlist.length) {
+        self._songChanged(d.idx);
+      }
+    });
+
+    ch.on('broadcast', { event: 'state_sync' }, function(payload) {
+      var d = payload.payload || {};
+      if (d.playlist && Array.isArray(d.playlist)) {
+        self.playlist = d.playlist;
+        if (typeof d.current === 'number' && d.current >= 0 && d.current < d.playlist.length) {
+          self._songChanged(d.current);
+        }
+        self._refreshUI();
+      }
+    });
+
+    // เพลงขอเข้ามา → แค่เพิ่มเข้าคิว, ไม่ทำอะไรอื่น (ยังไม่ได้เล่น)
+    ch.on('broadcast', { event: 'request_song' }, function(payload) {
+      var d = payload.payload || {};
+      if (d.song) {
+        var at = (typeof d.insertAfter === 'number') ? d.insertAfter + 1 : self.playlist.length;
+        self.playlist.splice(at, 0, d.song);
+        // ไม่เรียก _songChanged — รอจนวงกดเล่นจริงถึงจะเปลี่ยน
+      }
+    });
+
+    ch.on('broadcast', { event: 'skip_song' }, function(payload) {
+      var d = payload.payload || {};
+      if (typeof d.idx === 'number' && self.playlist[d.idx]) {
+        self.playlist[d.idx]._skipped = true;
+        self._refreshUI();
+      }
+    });
+
+    ch.on('broadcast', { event: 'unskip_song' }, function(payload) {
+      var d = payload.payload || {};
+      if (typeof d.idx === 'number' && self.playlist[d.idx]) {
+        self.playlist[d.idx]._skipped = false;
+        self._refreshUI();
+      }
+    });
+
+    ch.on('broadcast', { event: 'reorder' }, function(payload) {
+      var d = payload.payload || {};
+      if (typeof d.from === 'number' && typeof d.to === 'number') {
+        var item = self.playlist.splice(d.from, 1)[0];
+        self.playlist.splice(d.to, 0, item);
+        if (self.currentIdx === d.from) self.currentIdx = d.to;
+        else if (d.from < self.currentIdx && d.to >= self.currentIdx) self.currentIdx--;
+        else if (d.from > self.currentIdx && d.to <= self.currentIdx) self.currentIdx++;
+        self._refreshUI();
+      }
+    });
+
+    ch.on('broadcast', { event: 'remove' }, function(payload) {
+      var d = payload.payload || {};
+      if (typeof d.idx === 'number' && d.idx < self.playlist.length) {
+        self.playlist.splice(d.idx, 1);
+        if (self.currentIdx >= self.playlist.length) self.currentIdx = Math.max(0, self.playlist.length - 1);
+        self._refreshUI();
+      }
+    });
+
+    ch.on('broadcast', { event: 'transpose' }, function(payload) {
+      var d = payload.payload || {};
+      if (typeof d.idx === 'number' && self.playlist[d.idx] && d.key) {
+        self.playlist[d.idx]._key = d.key;
+        self._refreshUI();
+      }
+    });
+  },
+
+  /* ========== song changed — จับแค่ชื่อเพลงที่กำลังเล่น ========== */
+  _songChanged: function(idx) {
+    var song = this.playlist[idx];
+    if (!song) return;
+    var newName = song.name;
+    console.log('[LiveMode] Song changed idx:', idx, 'name:', newName, 'current:', this._currentSongName || 'NONE');
+
+    // เพลงเดิมที่กำลังแสดงอยู่ — ไม่ทำอะไร
+    if (newName === this._currentSongName) {
+      this.currentIdx = idx;
       return;
     }
 
-    const lower = songName.toLowerCase().trim();
-    // Exact match first
-    let match = Library.songs.find(s => s.name.toLowerCase().trim() === lower);
-
-    // Partial match (library contains or song name contains)
-    if (!match) {
-      match = Library.songs.find(s =>
-        s.name.toLowerCase().trim().includes(lower) ||
-        lower.includes(s.name.toLowerCase().trim())
-      );
+    // เพลงแรกหลัง connect — เปิดทันที
+    if (!this._currentSongName) {
+      this.currentIdx = idx;
+      this._currentSongName = newName;
+      this._openSong(newName);
+      this._refreshUI();
+      return;
     }
 
-    // Fuzzy: strip spaces, dashes, parens and try again
-    if (!match) {
-      const normalize = str => str.toLowerCase().replace(/[\s\-_()（）]/g, '').trim();
-      const n = normalize(songName);
-      match = Library.songs.find(s => normalize(s.name) === n);
-      if (!match) {
-        match = Library.songs.find(s => normalize(s.name).includes(n) || n.includes(normalize(s.name)));
-      }
-    }
-
-    console.log('[LiveMode] Match "' + songName + '" →', match ? match.name : 'NOT FOUND');
-
-    const statusEl = document.getElementById('live-match-status');
-
-    if (match) {
-      if (statusEl) {
-        statusEl.textContent = '✅ เจอโน้ต: ' + match.name;
-        statusEl.style.color = '#4caf50';
-      }
-      // Auto-open viewer
-      Viewer.open(match.name, match.url, []);
-    } else {
-      if (statusEl) {
-        statusEl.textContent = '⚠️ ไม่พบโน้ตสำหรับ: ' + songName;
-        statusEl.style.color = '#ff9800';
-      }
-      App.toast('ไม่พบโน้ตสำหรับ: ' + songName, 'warning');
-    }
+    // เพลงต่างจากที่แสดงอยู่ — แสดง banner ให้ยืนยัน
+    this.pendingSong = { idx: idx, name: newName };
+    this._showBanner(newName);
+    this._refreshUI();
   },
 
-  /* ---------- Update active view if visible ---------- */
-  updateActiveView() {
+  /* ========== banner ========== */
+  _showBanner: function(name) {
+    this._hideBanner();
+    var b = document.createElement('div');
+    b.id = 'live-banner';
+    b.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:10000;background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.3);animation:slideUpBanner 0.3s ease;';
+    b.innerHTML =
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:0.8rem;opacity:0.8;">&#x23ED; เพลงถัดไป</div>' +
+        '<div style="font-size:1.1rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + this._e(name) + '</div>' +
+      '</div>' +
+      '<button onclick="LiveMode.confirmSong()" style="background:#4caf50;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-weight:600;cursor:pointer;">&#x2705; เปลี่ยนเพลง</button>' +
+      '<button onclick="LiveMode.dismissSong()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:10px 16px;border-radius:8px;cursor:pointer;">&#x2715;</button>';
+    document.body.appendChild(b);
+  },
+
+  confirmSong: function() {
+    if (!this.pendingSong) return;
+    this.currentIdx = this.pendingSong.idx;
+    var name = this.pendingSong.name;
+    this._currentSongName = name;
+    this.pendingSong = null;
+    this._hideBanner();
+    this._openSong(name);
+    this._refreshUI();
+  },
+
+  dismissSong: function() {
+    this.pendingSong = null;
+    this._hideBanner();
+  },
+
+  _hideBanner: function() {
+    var el = document.getElementById('live-banner');
+    if (el) el.remove();
+  },
+
+  /* ========== match & open sheet music ========== */
+  _openSong: function(songName) {
+    if (!songName) return;
+    var self = this;
+
+    // Chord mode: always search chords
+    if (this.viewMode === 'chords') {
+      self._matchStatus('&#x1F3B8; คอร์ด: ' + songName, '#2196f3');
+      Viewer.openChordSearch(songName);
+      return;
+    }
+
+    // Notes mode: search library first, fallback to chords
+    this._loadSongs().then(function() {
+      if (!Library.songs || Library.songs.length === 0) {
+        self._matchStatus('&#x26A0; ไม่มีเพลงในระบบ', '#f44336');
+        return;
+      }
+
+      var lower = songName.toLowerCase().trim();
+      var norm = function(s) { return s.toLowerCase().replace(/[\s\-_()（）\[\]【】]/g, ''); };
+      var target = norm(songName);
+      var bestMatch = null;
+      var bestScore = 0;
+
+      for (var i = 0; i < Library.songs.length; i++) {
+        var n = Library.songs[i].name.toLowerCase().trim();
+        var nn = norm(Library.songs[i].name);
+        var score = 0;
+
+        // Exact match (highest priority)
+        if (n === lower || nn === target) {
+          score = 100;
+        }
+        // One fully contains the other — score by similarity ratio
+        else if (n.indexOf(lower) >= 0 || lower.indexOf(n) >= 0) {
+          var shorter = Math.min(n.length, lower.length);
+          var longer = Math.max(n.length, lower.length);
+          score = (shorter / longer) * 80; // max 80 for partial
+        }
+        // Fuzzy (normalized) contains
+        else if (nn.indexOf(target) >= 0 || target.indexOf(nn) >= 0) {
+          var sn = Math.min(nn.length, target.length);
+          var ln = Math.max(nn.length, target.length);
+          score = (sn / ln) * 70; // max 70 for fuzzy
+        }
+
+        // Must be at least 50% similar to count as a match
+        if (score > 50 && score > bestScore) {
+          bestScore = score;
+          bestMatch = Library.songs[i];
+          if (score === 100) break; // exact — no need to continue
+        }
+      }
+
+      console.log('[LiveMode] Match "' + songName + '" -> ' + (bestMatch ? bestMatch.name + ' (score:' + bestScore.toFixed(0) + ')' : 'NOT FOUND'));
+
+      if (bestMatch) {
+        self._matchStatus('&#x2705; เจอโน้ต: ' + bestMatch.name, '#4caf50');
+        Viewer.open(bestMatch.name, bestMatch.url, []);
+      } else {
+        self._matchStatus('&#x1F3B8; ไม่พบโน้ต — ค้นหาคอร์ดแทน: ' + songName, '#ff9800');
+        Viewer.openChordSearch(songName);
+      }
+    });
+  },
+
+  _matchStatus: function(html, color) {
+    var el = document.getElementById('live-match-status');
+    if (el) { el.innerHTML = html; el.style.color = color; }
+  },
+
+  /* ========== helpers ========== */
+  _dbg: function(msg) {
+    var t = new Date().toLocaleTimeString('th-TH');
+    var line = t + ' ' + msg;
+    console.log('[LiveMode]', msg);
+    if (!this._debugLog) this._debugLog = [];
+    this._debugLog.push(line);
+  },
+
+  _initSB: function() {
+    if (this.sb) return;
+    if (typeof window.supabase === 'undefined' || !window.supabase.createClient) return;
+    this.sb = window.supabase.createClient(
+      'https://wsorngsyowgxikiepice.supabase.co',
+      'sb_publishable_k2zvxeE9SJEEJkw3SVolqg_pkgZQPnm'
+    );
+  },
+
+  _loadSongs: function() {
+    if (Library.songs && Library.songs.length > 0) return Promise.resolve();
+    var cached = localStorage.getItem('ncs-songs-cache');
+    if (cached) { try { Library.songs = JSON.parse(cached); } catch(e) {} }
+    if (Library.songs && Library.songs.length > 0) return Promise.resolve();
+    return API.listSongs().then(function(res) {
+      if (res.success && res.data && res.data.songs) {
+        Library.songs = res.data.songs;
+        localStorage.setItem('ncs-songs-cache', JSON.stringify(Library.songs));
+        localStorage.setItem('ncs-songs-cache-time', Date.now().toString());
+      }
+    }).catch(function() {});
+  },
+
+  _setStatus: function(text) {
+    var el = document.getElementById('live-status');
+    if (el) el.textContent = text;
+  },
+
+  _showResult: function(msg, extra) {
+    if (App.currentView !== 'livemode') return;
+    var area = document.getElementById('content-area');
+    if (!area) return;
+    area.innerHTML = '<div style="max-width:480px;margin:3rem auto;padding:1.5rem;text-align:center;">' +
+      '<h2 style="color:var(--text-primary);">&#127928; Live Mode</h2>' +
+      '<p style="color:var(--text-muted);margin-top:1rem;">' + msg + '</p>' +
+      (extra || '') + '</div>';
+  },
+
+  _refreshUI: function() {
     if (App.currentView !== 'livemode' || !this.active) return;
-    const area = document.getElementById('content-area');
-    if (area) area.innerHTML = this.renderActiveView();
+    var area = document.getElementById('content-area');
+    if (area) area.innerHTML = this._activeHTML();
   },
 
-  /* ---------- Disconnect ---------- */
-  disconnect() {
-    if (this.channel) {
-      this.channel.unsubscribe();
-      this.channel = null;
+  _cleanup: function() {
+    for (var i = 0; i < this._tempChannels.length; i++) {
+      try { this._tempChannels[i].unsubscribe(); } catch(e) {}
     }
+    this._tempChannels = [];
+  },
+
+  disconnect: function() {
+    this._connectId++;
+    this._cleanup();
+    if (this.channel) { try { this.channel.unsubscribe(); } catch(e) {} this.channel = null; }
     this.active = false;
     this.playlist = [];
     this.currentIdx = -1;
+    this._currentSongName = null;
     this.pendingSong = null;
-    this.verifiedEmail = false;
-    this.hideSongConfirmation();
-    this.updateSidebarIndicator(false);
+    this.channelName = '';
+    this._hideBanner();
+    this._badge(false);
     App.toast('ตัดการเชื่อมต่อ Live Mode แล้ว', 'info');
     if (App.currentView === 'livemode') this.renderView();
   },
 
-  /* ---------- Sidebar indicator ---------- */
-  updateSidebarIndicator(active) {
-    const badge = document.getElementById('live-badge');
-    if (badge) {
-      badge.style.display = active ? '' : 'none';
-      badge.textContent = active ? '●' : '';
-      badge.style.color = '#f44336';
-    }
+  _badge: function(on) {
+    var b = document.getElementById('live-badge');
+    if (b) { b.style.display = on ? '' : 'none'; b.textContent = on ? '\u25CF' : ''; b.style.color = '#f44336'; }
   },
 
-  /* ---------- Helpers ---------- */
-  escapeHtml(s) {
-    if (!s) return '';
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  setViewMode: function(mode) {
+    this.viewMode = mode;
+    localStorage.setItem('ncs-live-viewMode', mode);
+    // Re-open current song with new mode
+    var song = this.playlist[this.currentIdx];
+    if (song) this._openSong(song.name);
+    this._refreshUI();
   },
-  escapeAttr(s) {
-    if (!s) return '';
-    return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  _e: function(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; },
+
+  /* ========== sanitize channel part (must match BandThai's _sanitizeChannelPart) ========== */
+  _sanitizeCh: function(str) {
+    var out = '';
+    var s = (str || '').trim();
+    for (var i = 0; i < s.length; i++) {
+      var code = s.charCodeAt(i);
+      if ((code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
+        out += s[i]; // 0-9 A-Z a-z
+      } else if (code >= 0x0E00 && code <= 0x0E7F) {
+        out += code.toString(16); // Thai → hex (same as BandThai)
+      } else {
+        out += '_';
+      }
+    }
+    return out.replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 60);
+  },
+
+  /* ========== active view HTML ========== */
+  _activeHTML: function() {
+    var song = this.playlist[this.currentIdx];
+    var songName = song ? song.name : '\u2014';
+    var h = '<div style="max-width:600px;margin:1rem auto;padding:1rem;">' +
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;">' +
+        '<span style="font-size:1.5rem;">&#x1F534;</span>' +
+        '<div>' +
+          '<div style="font-weight:600;color:var(--text-primary);">Live Mode \u2014 เชื่อมต่อแล้ว</div>' +
+          '<div style="font-size:0.8rem;color:var(--text-muted);">' + this._e(this.channelName) + '</div>' +
+        '</div>' +
+        '<button class="btn" onclick="LiveMode.disconnect()" style="margin-left:auto;background:var(--bg-tertiary);color:#f44336;border:1px solid #f44336;padding:6px 16px;border-radius:8px;">&#x2715; ตัดการเชื่อมต่อ</button>' +
+      '</div>' +
+      // View mode toggle
+      '<div style="display:flex;gap:0;margin-bottom:1rem;border-radius:10px;overflow:hidden;border:2px solid var(--accent);">' +
+        '<button onclick="LiveMode.setViewMode(\'notes\')" style="flex:1;padding:10px 0;font-size:0.95rem;font-weight:600;border:none;cursor:pointer;' +
+          (this.viewMode === 'notes' ? 'background:var(--accent);color:#fff;' : 'background:var(--bg-secondary);color:var(--text-muted);') + '">' +
+          '&#x1F3B5; ดูโน้ต</button>' +
+        '<button onclick="LiveMode.setViewMode(\'chords\')" style="flex:1;padding:10px 0;font-size:0.95rem;font-weight:600;border:none;cursor:pointer;' +
+          (this.viewMode === 'chords' ? 'background:var(--accent);color:#fff;' : 'background:var(--bg-secondary);color:var(--text-muted);') + '">' +
+          '&#x1F3B8; ดูคอร์ด</button>' +
+      '</div>' +
+      '<div style="background:var(--bg-secondary);border-radius:12px;padding:1.2rem;margin-bottom:1rem;border:2px solid var(--accent);">' +
+        '<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">&#x1F3B5; กำลังเล่น</div>' +
+        '<div style="font-size:1.3rem;font-weight:700;color:var(--accent);" id="live-now-playing">' + this._e(songName) + '</div>' +
+        '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;" id="live-match-status"></div>' +
+      '</div>';
+
+    if (this.pendingSong) {
+      h += '<div style="background:linear-gradient(135deg,#1a237e,#283593);border-radius:12px;padding:1rem;margin-bottom:1rem;color:#fff;display:flex;align-items:center;gap:12px;">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:0.8rem;opacity:0.8;">&#x23ED; เพลงถัดไปรอยืนยัน</div>' +
+          '<div style="font-size:1.1rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + this._e(this.pendingSong.name) + '</div>' +
+        '</div>' +
+        '<button onclick="LiveMode.confirmSong()" style="background:#4caf50;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:600;cursor:pointer;">&#x2705; เปลี่ยน</button>' +
+        '<button onclick="LiveMode.dismissSong()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 12px;border-radius:8px;cursor:pointer;">&#x2715;</button>' +
+      '</div>';
+    }
+
+    h += '<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">Playlist (' + this.playlist.length + ' เพลง)</div>' +
+      '<div style="display:flex;flex-direction:column;gap:4px;">';
+
+    for (var i = 0; i < this.playlist.length; i++) {
+      var s = this.playlist[i];
+      var cur = (i === this.currentIdx);
+      var skip = s._skipped ? 'opacity:0.4;text-decoration:line-through;' : '';
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;' +
+        (cur ? 'background:var(--accent);color:#fff;font-weight:600;' : 'background:var(--bg-secondary);color:var(--text-primary);') +
+        skip + '">' +
+        '<span style="font-size:0.75rem;min-width:24px;text-align:center;' + (cur ? 'color:#fff;' : 'color:var(--text-muted);') + '">' + (i+1) + '</span>' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + this._e(s.name) + '</span>' +
+        (s._key ? '<span style="font-size:0.75rem;' + (cur ? 'color:rgba(255,255,255,0.8);' : 'color:var(--text-muted);') + '">' + this._e(s._key || s.key) + '</span>' : '') +
+        '</div>';
+    }
+
+    h += '</div></div>';
+    return h;
   }
 };
