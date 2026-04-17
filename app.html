@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Note Chord SoulCiety</title>
   <meta name="description" content="Note Chord SoulCiety — ระบบจัดการโน้ตเพลง คอร์ดเพลง สำหรับนักดนตรี">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/themes.css">
@@ -149,6 +153,7 @@
       <div class="viewer-divider"></div>
       <button class="viewer-btn" id="viewer-next" onclick="Viewer.nextSong()" style="display:none" title="เพลงถัดไป">❯</button>
       <div class="viewer-actions">
+        <button class="viewer-btn" id="viewer-chord-btn" onclick="Viewer.searchChord()" title="ค้นหาคอร์ด">🎸</button>
         <button class="viewer-btn" id="viewer-fav-btn" onclick="Viewer.toggleFavorite()" title="รายการโปรด">☆</button>
         <button class="viewer-btn" onclick="Viewer.showSetlistPicker()" title="เพิ่มใน Setlist">📋</button>
       </div>
