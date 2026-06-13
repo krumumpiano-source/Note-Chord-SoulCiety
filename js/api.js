@@ -159,5 +159,15 @@ const API = {
 
   addRecent(token, songName, songUrl) {
     return this.post('recent', { action: 'add', token, song_name: songName, song_url: songUrl });
+  },
+
+  /* ---------- Settings ---------- */
+
+  getSettings(token) {
+    return this.get('settings', { token });
+  },
+
+  saveSettings(token, data) {
+    return this.post('settings', { token, ...data });
   }
 };

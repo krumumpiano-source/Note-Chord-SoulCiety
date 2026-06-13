@@ -65,3 +65,10 @@ CREATE TABLE IF NOT EXISTS sync_meta (
 );
 CREATE INDEX IF NOT EXISTS idx_recent_uid ON recent(uid);
 CREATE INDEX IF NOT EXISTS idx_recent_viewed ON recent(uid, viewed_at);
+
+-- Settings table: stores app configuration key-value pairs
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

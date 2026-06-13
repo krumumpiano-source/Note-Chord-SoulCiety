@@ -1,7 +1,13 @@
 import { jsonOk, jsonErr, verifyAdmin, now } from '../_helpers.js';
 
-const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/17znwgPpX-Kp4dcGRRWDtzyGfIrdh_DAZoNxA9c2o0wg/gviz/tq?tqx=out:csv&sheet=SheetMusic_Index';
 const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Get the sheet CSV URL from settings
+async function getSheetCsvUrl(db) {
+  const row = await db.prepare("SELECT value FROM settings WHERE key = 'google_sheet_url'").first();
+  if (!row || !row.value) return null;
+  return row.value.trim();
+}
 
 // Parse Google Sheet CSV into [{name, url}]
 function parseCsv(csv) {
@@ -15,8 +21,10 @@ function parseCsv(csv) {
 }
 
 // Core sync logic — callable from anywhere
-export async function syncFromSheet(db) {
-  const res = await fetch(SHEET_CSV_URL);
+export async function syncFromSheet(db, sheetUrl) {
+  const url = sheetUrl || await getSheetCsvUrl(db);
+  if (!url) throw new Error('ไม่ได้ตั้งค่า Google Sheet URL ใน settings');
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch Google Sheet: ' + res.status);
   const csv = await res.text();
   const songs = parseCsv(csv);
