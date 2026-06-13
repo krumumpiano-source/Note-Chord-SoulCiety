@@ -49,6 +49,15 @@
   --sidebar-width: 260px;
   --topbar-height: 56px;
 
+  /* ===== Z-index Scale ===== */
+  --z-base: 1;
+  --z-sidebar: 30;
+  --z-topbar: 20;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-viewer: 300;
+  --z-toast: 9999;
+
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -92,10 +101,21 @@
   --shadow-xl:  0 12px 48px rgba(0, 0, 0, 0.15);
 }
 
-/* ===== Transitions for theme switching ===== */
-*,
-*::before,
-*::after {
+/* ===== Global Animations ===== */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Optimized Transitions ===== */
+body.theme-transition *,
+body.theme-transition *::before,
+body.theme-transition *::after {
   transition-property: background-color, border-color, color, box-shadow;
   transition-duration: 0.25s;
   transition-timing-function: ease;

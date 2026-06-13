@@ -72,3 +72,12 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+-- Per-user settings: each user's own Google Drive folder and Google Sheet URL
+CREATE TABLE IF NOT EXISTS user_settings (
+  uid TEXT PRIMARY KEY,
+  google_sheet_url TEXT NOT NULL DEFAULT '',
+  google_drive_url TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

@@ -50,7 +50,7 @@ a:hover { color: var(--accent-hover); }
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  z-index: 30;
+  z-index: var(--z-sidebar);
   transition: transform var(--transition-slow);
 }
 
@@ -249,7 +249,7 @@ a:hover { color: var(--accent-hover); }
   padding: 0 20px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-primary);
-  z-index: 20;
+  z-index: var(--z-topbar);
 }
 
 .topbar-hamburger {
@@ -388,11 +388,6 @@ a:hover { color: var(--accent-hover); }
 .sort-menu.open {
   display: block;
   animation: fadeSlideDown 0.15s ease;
-}
-
-@keyframes fadeSlideDown {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 .sort-menu-item {
@@ -749,7 +744,7 @@ a:hover { color: var(--accent-hover); }
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 9999;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: 8px;

@@ -17,9 +17,12 @@ const Setlists = {
     if (token) {
       const res = await API.getSetlists(token);
       if (res.success && res.data) {
-        this.list = (res.data.setlists || []).map(sl => ({
-          ...sl,
-          songs: this.parseSongs(sl.songs_json)
+        const raw = Array.isArray(res.data) ? res.data : (res.data.setlists || []);
+        this.list = raw.map(sl => ({
+          setlist_id: sl.id || sl.setlist_id,
+          name: sl.name,
+          songs: this.parseSongs(sl.songs),
+          updated_at: sl.updated_at
         }));
         localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.list));
       }
@@ -46,11 +49,10 @@ const Setlists = {
     const res = await API.saveSetlist(token, '', name, '[]');
     if (res.success && res.data) {
       const newSl = {
-        setlist_id: res.data.setlist_id,
+        setlist_id: res.data.id || res.data.setlist_id,
         name: name,
         songs: [],
-        songs_json: '[]',
-        created_at: new Date().toISOString()
+        updated_at: new Date().toISOString()
       };
       this.list.push(newSl);
       localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.list));

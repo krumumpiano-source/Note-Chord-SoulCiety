@@ -24,7 +24,8 @@ const Favorites = {
     if (token) {
       const res = await API.getFavorites(token);
       if (res.success && res.data) {
-        this.list = res.data.favorites || [];
+        const raw = Array.isArray(res.data) ? res.data : (res.data.favorites || []);
+        this.list = raw.map(f => ({ name: f.song_name || f.name, url: f.song_url || f.url }));
         this._rebuildSet();
         localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.list));
       }

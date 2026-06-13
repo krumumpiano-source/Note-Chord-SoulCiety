@@ -519,7 +519,7 @@ var LiveMode = {
     var cached = localStorage.getItem('ncs-songs-cache');
     if (cached) { try { Library.songs = JSON.parse(cached); } catch(e) {} }
     if (Library.songs && Library.songs.length > 0) return Promise.resolve();
-    return API.listSongs().then(function(res) {
+    return API.listSongs(Auth.getToken()).then(function(res) {
       if (res.success && res.data && res.data.songs) {
         Library.songs = res.data.songs;
         localStorage.setItem('ncs-songs-cache', JSON.stringify(Library.songs));

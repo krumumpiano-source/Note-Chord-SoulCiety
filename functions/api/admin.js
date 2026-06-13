@@ -13,8 +13,8 @@ export async function onRequestGet(context) {
     const { results: users } = await db.prepare(
       `SELECT u.uid, u.email, u.name, u.status, u.package, u.created_at,
         (SELECT COUNT(*) FROM favorites f WHERE f.uid = u.uid) as fav_count,
-        (SELECT COUNT(*) FROM setlists s WHERE s.uid = u.uid) as set_count,
-        (SELECT COUNT(*) FROM recent r WHERE r.uid = u.uid) as rec_count
+        (SELECT COUNT(*) FROM setlists s WHERE s.uid = u.uid) as setlist_count,
+        (SELECT COUNT(*) FROM recent r WHERE r.uid = u.uid) as recent_count
        FROM users u ORDER BY u.created_at DESC`
     ).all();
     return jsonOk({ users });
@@ -61,11 +61,13 @@ export async function onRequestPost(context) {
     return jsonOk({ message: 'ปลดบล็อกแล้ว' });
   }
   if (action === 'reset-pw') {
+    const newPw = body.new_password;
+    if (!newPw || newPw.length < 6) return jsonErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัว');
     const salt = uuid();
-    const hash = await hashPassword('123456', salt);
+    const hash = await hashPassword(newPw, salt);
     await db.prepare('UPDATE users SET password_hash = ?, salt = ? WHERE uid = ?')
       .bind(hash, salt, body.uid).run();
-    return jsonOk({ message: 'รีเซ็ตรหัสผ่านเป็น 123456' });
+    return jsonOk({ message: 'รีเซ็ตรหัสผ่านสำเร็จ' });
   }
   if (action === 'delete-user') {
     const uid = body.uid;

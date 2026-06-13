@@ -17,9 +17,12 @@ const Library = {
     const container = document.getElementById('content-area');
     container.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div></div>';
 
-    // Try cache first
-    const cached = localStorage.getItem('ncs-songs-cache');
-    const cacheTime = localStorage.getItem('ncs-songs-cache-time');
+    // Try per-user cache first (prevents cache bleed between accounts on same device)
+    const _u = Auth.getUser();
+    const _cacheKey = 'ncs-songs-cache-' + (_u ? _u.uid : 'guest');
+    const _cacheTimeKey = 'ncs-songs-cache-time-' + (_u ? _u.uid : 'guest');
+    const cached = localStorage.getItem(_cacheKey);
+    const cacheTime = localStorage.getItem(_cacheTimeKey);
     const cacheValid = cacheTime && (Date.now() - parseInt(cacheTime)) < 300000; // 5 min
 
     if (cached && cacheValid) {
@@ -35,11 +38,15 @@ const Library = {
   },
 
   async fetchFromServer(background) {
-    const res = await API.listSongs();
+    const token = Auth.getToken();
+    const res = await API.listSongs(token);
     if (res.success && res.data && res.data.songs) {
       this.songs = res.data.songs;
-      localStorage.setItem('ncs-songs-cache', JSON.stringify(this.songs));
-      localStorage.setItem('ncs-songs-cache-time', Date.now().toString());
+      const _cu = Auth.getUser();
+      const _ck = 'ncs-songs-cache-' + (_cu ? _cu.uid : 'guest');
+      const _ctk = 'ncs-songs-cache-time-' + (_cu ? _cu.uid : 'guest');
+      localStorage.setItem(_ck, JSON.stringify(this.songs));
+      localStorage.setItem(_ctk, Date.now().toString());
       if (!background) {
         this.applyFilters();
         this.render();

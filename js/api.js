@@ -67,8 +67,8 @@ const API = {
 
   /* ---------- Songs ---------- */
 
-  listSongs() {
-    return this.get('songs');
+  listSongs(token) {
+    return this.get('songs', token ? { token } : {});
   },
 
   getPdf(token, fileId) {
@@ -161,7 +161,7 @@ const API = {
     return this.post('recent', { action: 'add', token, song_name: songName, song_url: songUrl });
   },
 
-  /* ---------- Settings ---------- */
+  /* ---------- Settings (global / admin) ---------- */
 
   getSettings(token) {
     return this.get('settings', { token });
@@ -169,5 +169,15 @@ const API = {
 
   saveSettings(token, data) {
     return this.post('settings', { token, ...data });
+  },
+
+  /* ---------- User Settings (per-user Drive / Sheet) ---------- */
+
+  getUserSettings(token) {
+    return this.get('user-settings', { token });
+  },
+
+  saveUserSettings(token, data) {
+    return this.post('user-settings', { token, ...data });
   }
 };

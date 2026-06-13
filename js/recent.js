@@ -16,7 +16,8 @@ const Recent = {
     if (token) {
       const res = await API.getRecent(token);
       if (res.success && res.data) {
-        this.list = res.data.recent || [];
+        const raw = Array.isArray(res.data) ? res.data : (res.data.recent || []);
+        this.list = raw.map(r => ({ name: r.song_name || r.name, url: r.song_url || r.url, opened_at: r.viewed_at || r.opened_at }));
         localStorage.setItem(this.LOCAL_KEY, JSON.stringify(this.list));
       }
     }

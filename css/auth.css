@@ -26,6 +26,7 @@
   top: -40px;
   left: -60px;
   pointer-events: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 
