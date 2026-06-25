@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    Note Chord SoulCiety — Main Layout
    Sidebar, Top bar, Grid, Cards, Components
    ============================================ */
@@ -45,6 +45,8 @@ a:hover { color: var(--accent-hover); }
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   background: var(--bg-secondary);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid var(--border-primary);
   display: flex;
   flex-direction: column;
@@ -248,8 +250,12 @@ a:hover { color: var(--accent-hover); }
   gap: 12px;
   padding: 0 20px;
   background: var(--bg-secondary);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-primary);
   z-index: var(--z-topbar);
+  position: sticky;
+  top: 0;
 }
 
 .topbar-hamburger {
@@ -494,16 +500,17 @@ a:hover { color: var(--accent-hover); }
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-normal);
   position: relative;
-  group: true;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .song-card:hover {
   border-color: var(--accent);
   background: var(--bg-card-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--shadow-lg);
 }
 
 .song-card-thumb {

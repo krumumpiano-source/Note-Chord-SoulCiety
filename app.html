@@ -31,7 +31,7 @@
         <div class="sidebar-brand">
           <div class="sidebar-brand-icon">🎵</div>
           <div>
-            <div class="sidebar-brand-text">Note Chord SoulCiety<span class="sidebar-brand-version">v1.0</span></div>
+            <div class="sidebar-brand-text">Note Chord SoulCiety<span class="sidebar-brand-version" id="app-version-label"></span></div>
           </div>
         </div>
 
@@ -114,6 +114,9 @@
 
         <!-- Actions -->
         <div class="topbar-actions">
+          <!-- Import -->
+          <button class="topbar-btn" id="btn-import-modal" title="นำเข้าโน้ตเพลง">➕</button>
+
           <!-- View Toggle -->
           <div class="topbar-view-toggle">
             <button class="topbar-btn active" data-view="grid" title="มุมมองตาราง">▦</button>
@@ -182,6 +185,34 @@
     </div>
   </div>
 
+  <!-- ===== Import Modal ===== -->
+  <div class="modal-overlay" id="import-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">นำเข้าโน้ตเพลง</span>
+        <button class="modal-close" id="btn-close-import">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:12px;">
+        <input type="text" id="import-name" placeholder="ชื่อเพลง" style="width:100%;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border-primary);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-sans);outline:none;">
+        
+        <div style="display:flex;gap:10px;">
+          <button class="btn" id="btn-import-file" style="flex:1;padding:10px;background:var(--bg-tertiary);border:1px solid var(--border-primary);color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer;transition:all var(--transition-fast);">📁 เลือกไฟล์ PDF/รูป</button>
+          <button class="btn" id="btn-import-camera" style="flex:1;padding:10px;background:var(--bg-tertiary);border:1px solid var(--border-primary);color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer;transition:all var(--transition-fast);">📷 ถ่ายรูปสแกน</button>
+        </div>
+        <input type="file" id="import-file-input" accept="application/pdf,image/*" style="display:none;">
+
+        <video id="import-camera-video" style="display:none;width:100%;border-radius:var(--radius-sm);border:1px solid var(--border-primary);" autoplay playsinline></video>
+        <button class="btn" id="btn-capture-camera" style="display:none;padding:10px;background:var(--accent);color:#fff;border-radius:var(--radius-sm);border:none;cursor:pointer;font-weight:700;">📸 กดถ่ายรูป</button>
+        <canvas id="import-camera-canvas" style="display:none;"></canvas>
+
+        <img id="import-preview" style="display:none;width:100%;max-height:200px;object-fit:contain;border-radius:var(--radius-sm);border:1px solid var(--border-primary);">
+        <div id="import-pdf-preview" style="display:none;text-align:center;padding:20px;background:var(--bg-tertiary);border-radius:var(--radius-sm);border:1px dashed var(--border-primary);color:var(--text-muted);">📄 เลือกไฟล์ PDF แล้ว</div>
+
+        <button class="btn" id="btn-import-save" style="margin-top:10px;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-full);font-weight:700;cursor:pointer;transition:opacity var(--transition-fast);">💾 บันทึกลงเครื่อง</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Toast Container ===== -->
   <div class="toast-container" id="toast-container"></div>
 
@@ -194,6 +225,7 @@
   <script src="js/favorites.js"></script>
   <script src="js/recent.js"></script>
   <script src="js/setlists.js"></script>
+  <script src="js/import.js"></script>
   <script src="js/library.js"></script>
   <script src="js/viewer.js"></script>
   <script src="js/livemode.js"></script>

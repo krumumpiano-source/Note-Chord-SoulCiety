@@ -12,10 +12,28 @@ async function getSheetCsvUrl(db) {
 // Parse Google Sheet CSV into [{name, url}]
 function parseCsv(csv) {
   const songs = [];
-  const regex = /"([^"]+)","(https:\/\/drive\.google\.com\/file\/d\/[^"]+)"/g;
-  let m;
-  while ((m = regex.exec(csv)) !== null) {
-    songs.push({ name: m[1], url: m[2] });
+  const lines = csv.split(/\r?\n/);
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    
+    const urlIndex = line.indexOf('https://drive.google.com/file/d/');
+    if (urlIndex > 0) {
+      let name = line.substring(0, urlIndex).trim();
+      let url = line.substring(urlIndex).trim();
+      
+      if (name.endsWith(',')) name = name.slice(0, -1).trim();
+      
+      if (name.startsWith('"') && name.endsWith('"')) {
+        name = name.slice(1, -1);
+      }
+      name = name.replace(/""/g, '"');
+      
+      if (url.endsWith('"')) url = url.slice(0, -1);
+      
+      if (name && url) {
+        songs.push({ name, url });
+      }
+    }
   }
   return songs;
 }

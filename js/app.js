@@ -23,6 +23,8 @@ const App = {
     this.setupSidebar();
     this.setupTopbar();
     Theme.init();
+    const vLabel = document.getElementById('app-version-label');
+    if (vLabel) vLabel.textContent = 'v' + CONFIG.APP_VERSION;
     Search.init();
 
     // Load data in parallel

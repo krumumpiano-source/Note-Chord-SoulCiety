@@ -23,7 +23,7 @@ const Settings = {
   /* ---------- Render the settings view ---------- */
   async renderView() {
     const container = document.getElementById('content-area');
-    document.getElementById('topbar-title').textContent = 'ตั้งค่า';
+    document.getElementById('topbar-title').textContent = 'ตั้งค่า / เปลี่ยนรหัสผ่าน';
 
     container.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div></div>';
 
@@ -43,10 +43,10 @@ const Settings = {
     '</p>';
 
     html += '<div class="settings-field">';
-    html += '<label class="settings-label" for="user-setting-drive">Drive Folder URL</label>';
-    html += '<input type="url" id="user-setting-drive" class="settings-input" ' +
-      'placeholder="https://drive.google.com/drive/folders/..." ' +
-      'value="' + esc(userSettings.google_drive_url || '') + '" />';
+    html += '<label class="settings-label" for="user-setting-drive">Drive Folder URLs (ใส่ได้หลายลิงก์โดยขึ้นบรรทัดใหม่)</label>';
+    html += '<textarea id="user-setting-drive" class="settings-input" ' +
+      'placeholder="https://drive.google.com/drive/folders/...\nhttps://drive.google.com/drive/folders/..." ' +
+      'style="height:80px;resize:vertical;">' + esc(userSettings.google_drive_url || '') + '</textarea>';
     html += '</div>';
 
     // Status indicator: show file count if URL is saved
@@ -77,6 +77,32 @@ const Settings = {
     '</div>';
     html += '</div>'; // help section
 
+    /* ---- Password Change section ---- */
+    html += '<div class="settings-section" style="margin-top:20px;">';
+    html += '<div class="settings-section-icon">🔐</div>';
+    html += '<h3 class="settings-section-title">เปลี่ยนรหัสผ่าน</h3>';
+
+    html += '<div class="settings-field">';
+    html += '<label class="settings-label" for="old-password">รหัสผ่านเดิม</label>';
+    html += '<input type="password" id="old-password" class="settings-input" />';
+    html += '</div>';
+
+    html += '<div class="settings-field">';
+    html += '<label class="settings-label" for="new-password">รหัสผ่านใหม่</label>';
+    html += '<input type="password" id="new-password" class="settings-input" />';
+    html += '</div>';
+
+    html += '<div class="settings-field">';
+    html += '<label class="settings-label" for="confirm-password">ยืนยันรหัสผ่านใหม่</label>';
+    html += '<input type="password" id="confirm-password" class="settings-input" />';
+    html += '</div>';
+
+    html += '<div class="settings-actions">';
+    html += '<button class="btn btn-primary" id="btn-change-pw">เปลี่ยนรหัสผ่าน</button>';
+    html += '<span id="pw-message" class="settings-status" style="margin-left:10px;"></span>';
+    html += '</div>';
+    html += '</div>'; // password section
+
     html += '</div>'; // .settings-container
 
     container.innerHTML = html;
@@ -87,6 +113,56 @@ const Settings = {
   attachEvents() {
     const saveBtn = document.getElementById('user-settings-save-btn');
     if (saveBtn) saveBtn.addEventListener('click', () => this.handleSave());
+
+    const changePwBtn = document.getElementById('btn-change-pw');
+    if (changePwBtn) changePwBtn.addEventListener('click', () => this.handleChangePassword());
+  },
+
+  async handleChangePassword() {
+    const oldPw = document.getElementById('old-password').value;
+    const newPw = document.getElementById('new-password').value;
+    const confPw = document.getElementById('confirm-password').value;
+    const msgEl = document.getElementById('pw-message');
+
+    if (!oldPw || !newPw || !confPw) {
+      msgEl.textContent = 'กรุณากรอกข้อมูลให้ครบ';
+      msgEl.className = 'settings-status settings-status-err';
+      return;
+    }
+
+    if (newPw.length < 6) {
+      msgEl.textContent = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร';
+      msgEl.className = 'settings-status settings-status-err';
+      return;
+    }
+
+    if (newPw !== confPw) {
+      msgEl.textContent = 'รหัสผ่านใหม่และการยืนยันไม่ตรงกัน';
+      msgEl.className = 'settings-status settings-status-err';
+      return;
+    }
+
+    const btn = document.getElementById('btn-change-pw');
+    btn.disabled = true;
+    btn.textContent = '⏳ กำลังเปลี่ยน...';
+    msgEl.textContent = '';
+
+    const res = await API.changePassword(oldPw, newPw);
+
+    btn.disabled = false;
+    btn.textContent = 'เปลี่ยนรหัสผ่าน';
+
+    if (res.success) {
+      msgEl.textContent = '✅ เปลี่ยนรหัสผ่านสำเร็จ';
+      msgEl.className = 'settings-status settings-status-ok';
+      document.getElementById('old-password').value = '';
+      document.getElementById('new-password').value = '';
+      document.getElementById('confirm-password').value = '';
+      Toast.show('เปลี่ยนรหัสผ่านสำเร็จ', 'success');
+    } else {
+      msgEl.textContent = '❌ ' + (res.error || 'เกิดข้อผิดพลาด');
+      msgEl.className = 'settings-status settings-status-err';
+    }
   },
 
   /* ---------- Save handler ---------- */

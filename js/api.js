@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    Note Chord SoulCiety — API Client
    Fetch wrapper for Vercel serverless endpoints
    ============================================ */
@@ -57,6 +57,11 @@ const API = {
     return this.post('auth', { action: 'login', email, password });
   },
 
+  changePassword(oldPassword, newPassword) {
+    const token = Auth.getToken();
+    return this.post('auth', { action: 'change-password', token, old_password: oldPassword, new_password: newPassword });
+  },
+
   verifySession(token) {
     return this.get('auth', { action: 'verify', token });
   },
@@ -73,6 +78,14 @@ const API = {
 
   getPdf(token, fileId) {
     return this.get('songs', { id: fileId, token });
+  },
+
+  searchAiChords(songName) {
+    return this.post('chord-search', { songName });
+  },
+
+  fetchDriveFiles(urls) {
+    return this.post('drive-list', { urls });
   },
 
   /* ---------- Admin ---------- */

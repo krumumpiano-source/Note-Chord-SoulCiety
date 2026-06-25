@@ -26,7 +26,9 @@ const Library = {
     const cacheValid = cacheTime && (Date.now() - parseInt(cacheTime)) < 300000; // 5 min
 
     if (cached && cacheValid) {
-      this.songs = JSON.parse(cached);
+      const serverSongs = JSON.parse(cached);
+      const localSongs = typeof ImportModule !== 'undefined' ? ImportModule.getLocalSongs() : [];
+      this.songs = [...localSongs, ...serverSongs];
       this.applyFilters();
       this.render();
       // Refresh in background
@@ -40,12 +42,33 @@ const Library = {
   async fetchFromServer(background) {
     const token = Auth.getToken();
     const res = await API.listSongs(token);
+
+    let driveSongs = [];
+    try {
+      const settingsRes = await API.getUserSettings(token);
+      if (settingsRes.success && settingsRes.data && settingsRes.data.google_drive_url) {
+        const urls = settingsRes.data.google_drive_url.split(/\n|,/).map(u => u.trim()).filter(u => u);
+        if (urls.length > 0) {
+          const driveRes = await API.fetchDriveFiles(urls);
+          if (driveRes.success && driveRes.data && driveRes.data.files) {
+            driveSongs = driveRes.data.files;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching drive songs:', e);
+    }
+
     if (res.success && res.data && res.data.songs) {
-      this.songs = res.data.songs;
+      const serverSongs = res.data.songs;
+      const localSongs = typeof ImportModule !== 'undefined' ? ImportModule.getLocalSongs() : [];
+      this.songs = [...localSongs, ...driveSongs, ...serverSongs];
+      
       const _cu = Auth.getUser();
       const _ck = 'ncs-songs-cache-' + (_cu ? _cu.uid : 'guest');
       const _ctk = 'ncs-songs-cache-time-' + (_cu ? _cu.uid : 'guest');
-      localStorage.setItem(_ck, JSON.stringify(this.songs));
+      // Cache server + drive songs
+      localStorage.setItem(_ck, JSON.stringify([...driveSongs, ...serverSongs]));
       localStorage.setItem(_ctk, Date.now().toString());
       if (!background) {
         this.applyFilters();
@@ -151,9 +174,11 @@ const Library = {
       const isFav = Favorites.isFavorite(song.name);
       const title = this.highlightSearch(song.name);
       html += `
-        <div class="song-card" data-index="${i}" data-name="${this.escapeAttr(song.name)}" data-url="${this.escapeAttr(song.url)}">
+        <div class="song-card ${(song.isLocal || song.isDrive) ? 'local-song' : ''}" data-index="${i}" data-name="${this.escapeAttr(song.name)}" data-url="${this.escapeAttr(song.url || '')}">
           <div class="song-card-thumb">
-            <button class="song-card-fav ${isFav ? 'favorited' : ''}" data-song="${this.escapeAttr(song.name)}" data-url="${this.escapeAttr(song.url)}" onclick="event.stopPropagation(); Favorites.toggle(this)" title="${isFav ? 'ลบจากรายการโปรด' : 'เพิ่มในรายการโปรด'}">${isFav ? '★' : '☆'}</button>
+            ${song.isLocal ? '<span style="position:absolute;top:6px;left:6px;background:var(--success);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">Local</span>' : ''}
+            ${song.isDrive ? '<span style="position:absolute;top:6px;left:6px;background:#4285F4;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">Drive</span>' : ''}
+            <button class="song-card-fav ${isFav ? 'favorited' : ''}" data-song="${this.escapeAttr(song.name)}" data-url="${this.escapeAttr(song.url || '')}" onclick="event.stopPropagation(); Favorites.toggle(this)" title="${isFav ? 'ลบจากรายการโปรด' : 'เพิ่มในรายการโปรด'}">${isFav ? '★' : '☆'}</button>
           </div>
           <div class="song-card-info">
             <div class="song-card-title">${title}</div>
@@ -170,12 +195,12 @@ const Library = {
       const isFav = Favorites.isFavorite(song.name);
       const title = this.highlightSearch(song.name);
       html += `
-        <div class="song-row" data-index="${i}" data-name="${this.escapeAttr(song.name)}" data-url="${this.escapeAttr(song.url)}">
-          <span class="song-row-icon">🎵</span>
+        <div class="song-row ${(song.isLocal || song.isDrive) ? 'local-song' : ''}" data-index="${i}" data-name="${this.escapeAttr(song.name)}" data-url="${this.escapeAttr(song.url || '')}">
+          <span class="song-row-icon">${song.isDrive ? '☁️' : (song.isLocal ? '📱' : '🎵')}</span>
           <span class="song-row-name">${title}</span>
-          <button class="song-row-fav ${isFav ? 'favorited' : ''}" data-song="${this.escapeAttr(song.name)}" data-url="${this.escapeAttr(song.url)}" onclick="event.stopPropagation(); Favorites.toggle(this)" title="${isFav ? 'ลบจากรายการโปรด' : 'เพิ่มในรายการโปรด'}">${isFav ? '★' : '☆'}</button>
+          <button class="song-row-fav ${isFav ? 'favorited' : ''}" data-song="${this.escapeAttr(song.name)}" data-url="${this.escapeAttr(song.url || '')}" onclick="event.stopPropagation(); Favorites.toggle(this)" title="${isFav ? 'ลบจากรายการโปรด' : 'เพิ่มในรายการโปรด'}">${isFav ? '★' : '☆'}</button>
           <div class="song-row-actions">
-            <button class="song-row-action-btn" onclick="event.stopPropagation(); Setlists.showAddToSetlist('${this.escapeAttr(song.name)}', '${this.escapeAttr(song.url)}')" title="เพิ่มใน Setlist">📋</button>
+            <button class="song-row-action-btn" onclick="event.stopPropagation(); Setlists.showAddToSetlist('${this.escapeAttr(song.name)}', '${this.escapeAttr(song.url || '')}')" title="เพิ่มใน Setlist">📋</button>
           </div>
         </div>`;
     });

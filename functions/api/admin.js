@@ -1,4 +1,4 @@
-﻿import { ADMIN_EMAIL, uuid, now, hashPassword, jsonOk, jsonErr, verifyAdmin } from '../_helpers.js';
+import { ADMIN_EMAIL, uuid, now, hashPassword, jsonOk, jsonErr, verifyAdmin } from '../_helpers.js';
 
 export async function onRequestGet(context) {
   const db = context.env.DB;
@@ -75,6 +75,7 @@ export async function onRequestPost(context) {
     await db.prepare('DELETE FROM setlists WHERE uid = ?').bind(uid).run();
     await db.prepare('DELETE FROM recent WHERE uid = ?').bind(uid).run();
     await db.prepare('DELETE FROM sessions WHERE uid = ?').bind(uid).run();
+    await db.prepare('DELETE FROM user_settings WHERE uid = ?').bind(uid).run();
     await db.prepare('DELETE FROM users WHERE uid = ?').bind(uid).run();
     return jsonOk({ message: 'ลบผู้ใช้แล้ว' });
   }

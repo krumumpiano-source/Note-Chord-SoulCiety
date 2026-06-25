@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    Note Chord SoulCiety — Admin Module
    Song upload + Member management (tabbed UI)
    ============================================ */
@@ -175,7 +175,14 @@ const Admin = {
       // Reload song list
       const sRes = await API.adminListSongs(token);
       if (sRes.success && sRes.data) this.songs = sRes.data.songs || [];
+      // Clear per-user song cache so Library reloads fresh data
+      const _u = Auth.getUser();
+      const _uid = _u ? _u.uid : 'guest';
+      localStorage.removeItem('ncs-songs-cache-' + _uid);
+      localStorage.removeItem('ncs-songs-cache-time-' + _uid);
+      // Also clear legacy non-scoped cache
       localStorage.removeItem('ncs-songs-cache');
+      localStorage.removeItem('ncs-songs-cache-time');
       this.renderView();
     } else {
       status.textContent = '\u274C ' + (res.error || 'Sync failed');
@@ -431,7 +438,7 @@ const Admin = {
     const sRes = await API.adminListSongs(token);
     if (sRes.success && sRes.data) this.songs = sRes.data.songs || [];
     // Refresh library cache too
-    if (typeof Library !== 'undefined' && Library.loadSongs) Library.loadSongs();
+    if (typeof Library !== 'undefined') Library.load();
     setTimeout(() => this.render(), 1500);
   },
 
@@ -453,7 +460,7 @@ const Admin = {
       Toast.show('\u0e25\u0e1a\u0e42\u0e19\u0e49\u0e15\u0e40\u0e1e\u0e25\u0e07\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08', 'success');
       this.songs = this.songs.filter(s => String(s.id) !== String(songId));
       this.render();
-      if (typeof Library !== 'undefined' && Library.loadSongs) Library.loadSongs();
+      if (typeof Library !== 'undefined') Library.load();
     } else {
       Toast.show(res.error || '\u0e40\u0e01\u0e34\u0e14\u0e02\u0e49\u0e2d\u0e1c\u0e34\u0e14\u0e1e\u0e25\u0e32\u0e14', 'error');
     }

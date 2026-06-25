@@ -1,4 +1,4 @@
-﻿import { uuid, now, jsonOk, jsonErr, verifyUser } from '../_helpers.js';
+import { uuid, now, jsonOk, jsonErr, verifyUser } from '../_helpers.js';
 
 export async function onRequestGet(context) {
   const db = context.env.DB;
@@ -23,12 +23,12 @@ export async function onRequestPost(context) {
   if (!s) return jsonErr('ไม่ได้เข้าสู่ระบบ', 401);
 
   const exists = await db.prepare(
-    'SELECT id FROM favorites WHERE uid = ? AND song_url = ?'
-  ).bind(s.uid, song_url).first();
+    'SELECT id FROM favorites WHERE uid = ? AND song_name = ?'
+  ).bind(s.uid, song_name).first();
 
   if (exists) {
-    await db.prepare('DELETE FROM favorites WHERE uid = ? AND song_url = ?')
-      .bind(s.uid, song_url).run();
+    await db.prepare('DELETE FROM favorites WHERE uid = ? AND song_name = ?')
+      .bind(s.uid, song_name).run();
     return jsonOk({ status: 'removed' });
   }
 

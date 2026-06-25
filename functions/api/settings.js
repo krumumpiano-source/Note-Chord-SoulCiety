@@ -3,7 +3,8 @@ import { jsonOk, jsonErr, verifyAdmin, verifyUser, now } from '../_helpers.js';
 // GET /api/settings — Read settings (admin sees all, user sees public)
 export async function onRequestGet(context) {
   const db = context.env.DB;
-  const token = context.request.headers.get('Authorization') || context.request.url.searchParams.get('token');
+  const url = new URL(context.request.url);
+  const token = context.request.headers.get('Authorization') || url.searchParams.get('token');
   const user = await verifyUser(db, token);
 
   if (!user) return jsonErr('ไม่ได้รับอนุญาต', 403);
