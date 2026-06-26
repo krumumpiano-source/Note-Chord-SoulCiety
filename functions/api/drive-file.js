@@ -14,7 +14,7 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const apiUrl = \`https://www.googleapis.com/drive/v3/files/\${fileId}?alt=media&key=\${apiKey}\`;
+    const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
     
     const response = await fetch(apiUrl);
     

@@ -26,7 +26,7 @@ export async function onRequestPost(context) {
       const folderId = extractFolderId(url);
       if (!folderId) continue;
 
-      const apiUrl = \`https://www.googleapis.com/drive/v3/files?q='\${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType)&key=\${apiKey}\`;
+      const apiUrl = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType)&key=${apiKey}`;
       
       const response = await fetch(apiUrl);
       if (response.ok) {
@@ -38,7 +38,7 @@ export async function onRequestPost(context) {
             .map(f => ({
               id: 'gdrive_' + f.id,
               name: f.name.replace(/\.[^/.]+$/, ""), // remove extension
-              url: \`/api/drive-file?id=\${f.id}\`, // proxy URL to bypass CORS
+              url: `/api/drive-file?id=${f.id}`, // proxy URL to bypass CORS
               mime_type: f.mimeType,
               isDrive: true,
               created_at: new Date().toISOString()
