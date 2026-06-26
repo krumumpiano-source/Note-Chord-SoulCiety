@@ -64,13 +64,37 @@ const Library = {
     if (res.success && res.data && res.data.songs) {
       const serverSongs = res.data.songs;
       const localSongs = typeof ImportModule !== 'undefined' ? ImportModule.getLocalSongs() : [];
-      this.songs = [...localSongs, ...driveSongs, ...serverSongs];
+      
+      // Deduplicate songs by name, preferring drive-file proxy URLs over generic/direct drive preview URLs
+      const uniqueSongs = [];
+      const seenNames = new Set();
+      const candidates = [...localSongs, ...driveSongs, ...serverSongs];
+      
+      for (const song of candidates) {
+        if (!seenNames.has(song.name)) {
+          seenNames.add(song.name);
+          uniqueSongs.push(song);
+        } else {
+          // If we already saw the name, check if this candidate has a proxy URL and swap if needed
+          const existingIdx = uniqueSongs.findIndex(s => s.name === song.name);
+          if (existingIdx !== -1) {
+            const existing = uniqueSongs[existingIdx];
+            const isExistingProxy = existing.url && (existing.url.startsWith('/api/drive-file') || existing.url.includes('/api/drive-file'));
+            const isCandidateProxy = song.url && (song.url.startsWith('/api/drive-file') || song.url.includes('/api/drive-file'));
+            if (isCandidateProxy && !isExistingProxy) {
+              uniqueSongs[existingIdx] = song;
+            }
+          }
+        }
+      }
+      this.songs = uniqueSongs;
       
       const _cu = Auth.getUser();
       const _ck = 'ncs-songs-cache-' + (_cu ? _cu.uid : 'guest');
       const _ctk = 'ncs-songs-cache-time-' + (_cu ? _cu.uid : 'guest');
-      // Cache server + drive songs
-      localStorage.setItem(_ck, JSON.stringify([...driveSongs, ...serverSongs]));
+      // Cache server + drive songs (excluding local songs)
+      const cachedList = this.songs.filter(s => !s.isLocal);
+      localStorage.setItem(_ck, JSON.stringify(cachedList));
       localStorage.setItem(_ctk, Date.now().toString());
       
       this.applyFilters();

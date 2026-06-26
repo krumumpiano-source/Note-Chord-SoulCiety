@@ -39,7 +39,6 @@ export async function onRequestPost(context) {
       if (data.files) {
         // Add files and map them to our song format
         const mappedFiles = data.files
-          .filter(f => f.mimeType === 'application/pdf' || f.mimeType.startsWith('image/'))
           .map(f => ({
             id: 'gdrive_' + f.id,
             name: f.name.replace(/\.[^/.]+$/, ""), // remove extension

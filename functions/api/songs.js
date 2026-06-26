@@ -1,4 +1,4 @@
-﻿import { jsonOk, jsonErr, verifyUser } from '../_helpers.js';
+import { jsonOk, jsonErr, verifyUser } from '../_helpers.js';
 import { shouldSync, syncFromSheet } from './sync-songs.js';
 
 // Extract Google Drive folder ID from a folder URL
@@ -43,7 +43,7 @@ async function listDriveFolder(folderId, apiKey) {
 
 export async function onRequestGet(context) {
   const db = context.env.DB;
-  const apiKey = context.env.GOOGLE_API_KEY || '';
+  const apiKey = context.env.GOOGLE_DRIVE_API_KEY || context.env.GOOGLE_API_KEY || '';
   const url = new URL(context.request.url);
   const token = url.searchParams.get('token');
   const id = url.searchParams.get('id');

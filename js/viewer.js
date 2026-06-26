@@ -81,6 +81,41 @@ const Viewer = {
       return;
     }
 
+    // Personal Google Drive file via proxy endpoint
+    if (url && (url.startsWith('/api/drive-file') || url.includes('/api/drive-file'))) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('HTTP status ' + response.status);
+        }
+        const mimeType = response.headers.get('Content-Type') || '';
+        
+        if (mimeType.startsWith('image/')) {
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          this.isImage = true;
+          this.showImageFromUrl(blobUrl);
+        } else if (mimeType === 'application/pdf') {
+          const arrayBuffer = await response.arrayBuffer();
+          const uint8 = new Uint8Array(arrayBuffer);
+          this.isImage = false;
+          await this.loadPdfFromBuffer(uint8);
+        } else {
+          // Fallback to iframe for other mime types (e.g. .sib) if we can extract file ID
+          const urlObj = new URL(url, window.location.origin);
+          const fileId = urlObj.searchParams.get('id');
+          if (fileId) {
+            this.showDrivePreview(`https://drive.google.com/file/d/${fileId}/preview`);
+          } else {
+            this.showError('ไม่สามารถแสดงไฟล์ประเภทนี้ได้: ' + mimeType);
+          }
+        }
+      } catch (err) {
+        this.showError('ไม่สามารถโหลดไฟล์จาก Google Drive: ' + err.message);
+      }
+      return;
+    }
+
     const fileId = this.extractFileId(url);
     if (!fileId) {
       this.showError('ไม่สามารถอ่าน File ID');
@@ -161,6 +196,28 @@ const Viewer = {
     this.showLoading(false);
   },
 
+  showImageFromUrl(url) {
+    const canvas = document.getElementById('viewer-canvas');
+    canvas.style.display = 'none';
+    const iframe = document.getElementById('viewer-drive-iframe');
+    if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
+
+    let img = document.getElementById('viewer-img');
+    if (!img) {
+      img = document.createElement('img');
+      img.id = 'viewer-img';
+      img.style.cssText = 'width:100%;height:auto;display:block;';
+      document.getElementById('viewer-body').appendChild(img);
+    }
+    img.src = url;
+    img.style.display = 'block';
+
+    this.totalPages = 1;
+    this.currentPage = 1;
+    this.updatePageIndicator();
+    this.showLoading(false);
+  },
+
   /* ---------- Load PDF with PDF.js ---------- */
   async loadPdf(base64) {
     const img = document.getElementById('viewer-img');
@@ -175,6 +232,27 @@ const Viewer = {
     const raw = atob(base64);
     const uint8 = new Uint8Array(raw.length);
     for (let i = 0; i < raw.length; i++) uint8[i] = raw.charCodeAt(i);
+
+    try {
+      this.pdfDoc = await pdfjsLib.getDocument({ data: uint8 }).promise;
+      this.totalPages = this.pdfDoc.numPages;
+      this.currentPage = 1;
+      await this.renderPage(this.currentPage);
+      this.updatePageIndicator();
+      this.showLoading(false);
+    } catch (e) {
+      this.showError('ไม่สามารถแสดง PDF: ' + e.message);
+    }
+  },
+
+  async loadPdfFromBuffer(uint8) {
+    const img = document.getElementById('viewer-img');
+    if (img) img.style.display = 'none';
+    const iframe = document.getElementById('viewer-drive-iframe');
+    if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
+
+    const canvas = document.getElementById('viewer-canvas');
+    canvas.style.display = 'block';
 
     try {
       this.pdfDoc = await pdfjsLib.getDocument({ data: uint8 }).promise;
@@ -360,7 +438,13 @@ const Viewer = {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     const img = document.getElementById('viewer-img');
-    if (img) { img.src = ''; img.style.display = 'none'; }
+    if (img) {
+      if (img.src && img.src.startsWith('blob:')) {
+        URL.revokeObjectURL(img.src);
+      }
+      img.src = '';
+      img.style.display = 'none';
+    }
 
     const iframe = document.getElementById('viewer-drive-iframe');
     if (iframe) { iframe.src = ''; iframe.style.display = 'none'; }
