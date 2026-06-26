@@ -70,10 +70,9 @@ const Library = {
       // Cache server + drive songs
       localStorage.setItem(_ck, JSON.stringify([...driveSongs, ...serverSongs]));
       localStorage.setItem(_ctk, Date.now().toString());
-      if (!background) {
-        this.applyFilters();
-        this.render();
-      }
+      
+      this.applyFilters();
+      this.render();
       this.updateStats();
     } else if (!background) {
       const container = document.getElementById('content-area');
