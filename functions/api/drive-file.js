@@ -8,9 +8,9 @@ export async function onRequestGet(context) {
     return jsonErr('Missing file id', 400);
   }
 
-  const apiKey = context.env.GOOGLE_DRIVE_API_KEY;
+  const apiKey = context.env.GOOGLE_DRIVE_API_KEY || context.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    return jsonErr('Missing GOOGLE_DRIVE_API_KEY', 500);
+    return jsonErr('Missing GOOGLE_DRIVE_API_KEY or GOOGLE_API_KEY', 500);
   }
 
   try {

@@ -9,9 +9,9 @@ export async function onRequestPost(context) {
       return jsonOk({ files: [] });
     }
 
-    const apiKey = context.env.GOOGLE_DRIVE_API_KEY;
+    const apiKey = context.env.GOOGLE_DRIVE_API_KEY || context.env.GOOGLE_API_KEY;
     if (!apiKey) {
-      return jsonErr('โปรดระบุ GOOGLE_DRIVE_API_KEY ใน Settings ของ Cloudflare Pages เพื่อใช้งานฟีเจอร์นี้');
+      return jsonErr('โปรดระบุ GOOGLE_DRIVE_API_KEY หรือ GOOGLE_API_KEY ใน Settings ของ Cloudflare Pages เพื่อใช้งานฟีเจอร์นี้');
     }
 
     const extractFolderId = (url) => {
@@ -29,22 +29,26 @@ export async function onRequestPost(context) {
       const apiUrl = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType)&key=${apiKey}`;
       
       const response = await fetch(apiUrl);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.files) {
-          // Add files and map them to our song format
-          const mappedFiles = data.files
-            .filter(f => f.mimeType === 'application/pdf' || f.mimeType.startsWith('image/'))
-            .map(f => ({
-              id: 'gdrive_' + f.id,
-              name: f.name.replace(/\.[^/.]+$/, ""), // remove extension
-              url: `/api/drive-file?id=${f.id}`, // proxy URL to bypass CORS
-              mime_type: f.mimeType,
-              isDrive: true,
-              created_at: new Date().toISOString()
-            }));
-          allFiles = allFiles.concat(mappedFiles);
-        }
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        const errMsg = errJson.error?.message || response.statusText;
+        return jsonErr(`ไม่สามารถเข้าถึงโฟลเดอร์ Google Drive ได้: ${errMsg} (โปรดตั้งค่าแชร์โฟลเดอร์ให้เป็น "Anyone with the link" เป็น Viewer)`);
+      }
+
+      const data = await response.json();
+      if (data.files) {
+        // Add files and map them to our song format
+        const mappedFiles = data.files
+          .filter(f => f.mimeType === 'application/pdf' || f.mimeType.startsWith('image/'))
+          .map(f => ({
+            id: 'gdrive_' + f.id,
+            name: f.name.replace(/\.[^/.]+$/, ""), // remove extension
+            url: `/api/drive-file?id=${f.id}`, // proxy URL to bypass CORS
+            mime_type: f.mimeType,
+            isDrive: true,
+            created_at: new Date().toISOString()
+          }));
+        allFiles = allFiles.concat(mappedFiles);
       }
     }
 

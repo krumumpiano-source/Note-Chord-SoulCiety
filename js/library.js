@@ -52,6 +52,8 @@ const Library = {
           const driveRes = await API.fetchDriveFiles(urls);
           if (driveRes.success && driveRes.data && driveRes.data.files) {
             driveSongs = driveRes.data.files;
+          } else if (driveRes.error) {
+            Toast.show(driveRes.error, 'error');
           }
         }
       }
