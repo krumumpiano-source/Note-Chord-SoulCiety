@@ -43,12 +43,14 @@ const Library = {
     const token = Auth.getToken();
     const res = await API.listSongs(token);
 
+    let hasDrive = false;
     let driveSongs = [];
     try {
       const settingsRes = await API.getUserSettings(token);
       if (settingsRes.success && settingsRes.data && settingsRes.data.google_drive_url) {
         const urls = settingsRes.data.google_drive_url.split(/\n|,/).map(u => u.trim()).filter(u => u);
         if (urls.length > 0) {
+          hasDrive = true;
           const driveRes = await API.fetchDriveFiles(urls);
           if (driveRes.success && driveRes.data && driveRes.data.files) {
             driveSongs = driveRes.data.files;
@@ -62,7 +64,7 @@ const Library = {
     }
 
     if (res.success && res.data && res.data.songs) {
-      const serverSongs = res.data.songs;
+      const serverSongs = hasDrive ? [] : res.data.songs;
       const localSongs = typeof ImportModule !== 'undefined' ? ImportModule.getLocalSongs() : [];
       
       // Deduplicate songs by name, preferring drive-file proxy URLs over generic/direct drive preview URLs
